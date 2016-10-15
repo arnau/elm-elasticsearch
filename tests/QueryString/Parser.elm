@@ -3,7 +3,8 @@ module QueryString.Parser exposing (all)
 import Test exposing (..)
 import Expect exposing (Expectation)
 
-import Elasticsearch.QueryString.Parser as QS exposing (E(..), Range(..), parse)
+import Elasticsearch.QueryString.Parser as QS exposing
+    (E(..), Range(..), RangeOp(..), parse)
 
 
 all : Test
@@ -30,6 +31,14 @@ all =
             [ test "Inclusive" <| \() -> parseInclusiveRange
             , test "Inclusive with field" <| \() -> parseInclusiveRangeWithField
             , test "Exclusive" <| \() -> parseExclusiveRange
+            , test "Left inclusive" <| \() -> parseLInclusiveRange
+            , test "Right inclusive" <| \() -> parseRInclusiveRange
+            , describe "Side unbounded"
+                [ test "gt" <| \() -> parseGtRange
+                , test "gte" <| \() -> parseGteRange
+                , test "lt" <| \() -> parseLtRange
+                , test "lte" <| \() -> parseLteRange
+                ]
             ]
         ]
 
@@ -196,4 +205,53 @@ parseExclusiveRange =
         (parse "{alpha TO omega}")
         (Ok [ ERange <|
                 Exclusive (ETerm "alpha") (ETerm "omega")
+            ])
+
+
+parseLInclusiveRange : Expectation
+parseLInclusiveRange =
+    Expect.equal
+        (parse "[alpha TO omega}")
+        (Ok [ ERange <|
+                LInclusive (ETerm "alpha") (ETerm "omega")
+            ])
+
+parseRInclusiveRange : Expectation
+parseRInclusiveRange =
+    Expect.equal
+        (parse "{alpha TO omega]")
+        (Ok [ ERange <|
+                RInclusive (ETerm "alpha") (ETerm "omega")
+            ])
+
+
+parseGtRange : Expectation
+parseGtRange =
+    Expect.equal
+        (parse ">10")
+        (Ok [ ERange <| SideUnbounded Gt (ETerm "10")
+            ])
+
+
+parseGteRange : Expectation
+parseGteRange =
+    Expect.equal
+        (parse ">=10")
+        (Ok [ ERange <| SideUnbounded Gte (ETerm "10")
+            ])
+
+
+parseLtRange : Expectation
+parseLtRange =
+    Expect.equal
+        (parse "<10")
+        (Ok [ ERange <| SideUnbounded Lt (ETerm "10")
+            ])
+
+
+parseLteRange : Expectation
+parseLteRange =
+    Expect.equal
+        (parse "<=10")
+        (Ok [ ERange <| SideUnbounded Lte (ETerm "10")
             ])

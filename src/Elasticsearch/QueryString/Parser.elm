@@ -1,4 +1,5 @@
-module Elasticsearch.QueryString.Parser exposing (E(..), Range(..), parse)
+module Elasticsearch.QueryString.Parser exposing
+    (E(..), Range(..), RangeOp(..), parse)
 
 import String
 import Combine exposing (..)
@@ -196,6 +197,28 @@ slashes : Parser a -> Parser a
 slashes e =
     slash *> e <* slash
 
+
+lbrace : Parser String
+lbrace =
+    string "{"
+
+
+rbrace : Parser String
+rbrace =
+    string "}"
+
+
+lbracket : Parser String
+lbracket =
+    string "["
+
+
+rbracket : Parser String
+rbracket =
+    string "]"
+
+
+
 {-|
     name:/joh?n(ath[oa]n)/
 -}
@@ -216,7 +239,14 @@ regex' =
 range =
     rec <| \() ->
         ERange
-            <$> (inclusiveRange `or` exclusiveRange)
+            <$> (choice
+                    [ inclusiveRange
+                    , exclusiveRange
+                    , lInclusiveRange
+                    , rInclusiveRange
+                    , sideUnboundedRange
+                    ]
+                )
 
 
 inclusiveRange : Parser Range
@@ -235,16 +265,64 @@ exclusiveRange =
             <?> "{to}"
 
 
+lInclusiveRange : Parser Range
+lInclusiveRange =
+    rec <| \() ->
+        (between lbracket rbrace)
+            <| LInclusive `map` rangeLowerBound `andMap` rangeUpperBound
+            <?> "[to}"
+
+
+rInclusiveRange : Parser Range
+rInclusiveRange =
+    rec <| \() ->
+        (between lbrace rbracket)
+            <| RInclusive `map` rangeLowerBound `andMap` rangeUpperBound
+            <?> "{to]"
+
+
+sideUnboundedRange : Parser Range
+sideUnboundedRange =
+    rec <| \() ->
+        SideUnbounded `map` rangeOp `andMap` term
+        <?> ">=<"
+
+
+rangeOp : Parser RangeOp
+rangeOp =
+    choice [ gteOp, gtOp, lteOp, ltOp ]
+
+
+gtOp : Parser RangeOp
+gtOp =
+    Gt <$ string ">"
+
+
+gteOp : Parser RangeOp
+gteOp =
+    Gte <$ string ">="
+
+
+ltOp : Parser RangeOp
+ltOp =
+    Lt <$ string "<"
+
+
+lteOp : Parser RangeOp
+lteOp =
+    Lte <$ string "<="
+
+
 rangeLowerBound =
-    term <* rangeOp
+    term <* rangeInf
 
 
 rangeUpperBound =
     term
 
 
-rangeOp : Parser String
-rangeOp =
+rangeInf : Parser String
+rangeInf =
     ws <| string "TO"
 
 
