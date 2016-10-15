@@ -17,7 +17,7 @@ version is [Elasticsearch
   * [x] Regular expressions (e.g. `/joh?n(ath[oa]n)/`)
   * [ ] Fuzziness (e.g. `quikc~ brwn~ foks~`)
   * [ ] Proximity searches (e.g. `"fox quick"~5`)
-  * [ ] Ranges (e.g. `date:[2012-01-01 TO 2012-12-31]`)
+  * [x] Ranges (e.g. `date:[2012-01-01 TO 2012-12-31]`)
   * [ ] Boosting (e.g. `quick^2 fox`)
   * [ ] Simple Boolean operators (e.g. `quick brown +fox -news`)
   * [x] Boolean operators (e.g. `((quick AND fox) OR (brown AND fox) OR fox) AND NOT news`)

@@ -10,7 +10,8 @@ import Task
 import Combine exposing (..)
 import Combine.Infix exposing (..)
 import Combine.Num exposing (int)
-import Elasticsearch.QueryString.Parser as QS exposing (E(..), Range(..))
+import Elasticsearch.QueryString.Parser as QS exposing
+    (E(..), Range(..), RangeOp(..))
 
 
 main =
@@ -173,10 +174,31 @@ expression depth e =
                     Exclusive a b ->
                         rng ("{", "}") a b
 
-                    _ ->
-                        group
-                            (color, color, color)
-                            [ token (255, 200, 150) (toString range) ]
+                    LInclusive a b ->
+                        rng ("[", "}") a b
+
+                    RInclusive a b ->
+                        rng ("{", "]") a b
+
+                    SideUnbounded rop a ->
+                        let
+                            op' =
+                                case rop of
+                                    Gt ->
+                                        ">"
+
+                                    Gte ->
+                                        ">="
+
+                                    Lt ->
+                                        "<"
+
+                                    Lte ->
+                                        "<="
+                        in
+                            group
+                                (color, color, color)
+                                [ (op op'), (expression (depth + 1) a) ]
 
 
 token color s =
