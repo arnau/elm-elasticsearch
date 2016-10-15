@@ -21,6 +21,7 @@ type E
     | EOr E E
     | ENot E
     | ERange Range
+    | EModifier Modifier
 
 
 type Range
@@ -36,6 +37,12 @@ type RangeOp
     | Gte
     | Lt
     | Lte
+
+
+type Modifier
+    = Fuzziness Int
+    | Proximity Int
+    | Boost Int
 
 
 parse : String -> Result String (List E)
@@ -228,14 +235,7 @@ regex' =
         <$> slashes (regex "[^\\/]+")
         <?> "regex"
 
-{-|
-    date:[2012-01-01 TO 2012-12-31]
-    count:[1 TO 5]
-    tag:{alpha TO omega}
-    count:[10 TO *]
-    date:{* TO 2012-01-01}
-    count:[1 TO 5}
--}
+
 range =
     rec <| \() ->
         ERange
@@ -249,6 +249,11 @@ range =
                 )
 
 
+{-| Inclusive range
+
+    date:[2012-01-01 TO 2012-12-31]
+    count:[1 TO 5]
+-}
 inclusiveRange : Parser Range
 inclusiveRange =
     rec <| \() ->
@@ -257,6 +262,10 @@ inclusiveRange =
             <?> "[to]"
 
 
+{-| Exclusive range
+
+    {1 TO 5}
+-}
 exclusiveRange : Parser Range
 exclusiveRange =
     rec <| \() ->
@@ -265,6 +274,10 @@ exclusiveRange =
             <?> "{to}"
 
 
+{-| Left inclusive range
+
+    [1 TO 5}
+-}
 lInclusiveRange : Parser Range
 lInclusiveRange =
     rec <| \() ->
@@ -273,6 +286,10 @@ lInclusiveRange =
             <?> "[to}"
 
 
+{-| Right inclusive range
+
+    {1 TO 5]
+-}
 rInclusiveRange : Parser Range
 rInclusiveRange =
     rec <| \() ->
@@ -281,6 +298,15 @@ rInclusiveRange =
             <?> "{to]"
 
 
+{-| Side unbounded range
+
+    age:>10
+    age:>=10
+    age:<10
+    age:<=10
+    age:(>=10 AND <20)
+    age:(+>=10 +<20)
+-}
 sideUnboundedRange : Parser Range
 sideUnboundedRange =
     rec <| \() ->
@@ -325,18 +351,6 @@ rangeInf : Parser String
 rangeInf =
     ws <| string "TO"
 
-
-
-{-|
-    age:>10
-    age:>=10
-    age:<10
-    age:<=10
-    age:(>=10 AND <20)
-    age:(+>=10 +<20)
--}
-rangeSideBound =
-    ""
 
 {-|
     quick^2 fox
