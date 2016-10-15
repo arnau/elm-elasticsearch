@@ -3,7 +3,8 @@ module QueryString.Parser exposing (all)
 import Test exposing (..)
 import Expect exposing (Expectation)
 
-import Elasticsearch.QueryString.Parser as QS exposing (E(..), parse)
+import Elasticsearch.QueryString.Parser as QS exposing
+    (E(..), Range(..), RangeOp(..), parse)
 
 
 all : Test
@@ -26,6 +27,19 @@ all =
         , test "Not phrase" <| \() -> parseNotPhrase
         , test "Not regex" <| \() -> parseNotRegex
         , test "Not group" <| \() -> parseNotGroup
+        , describe "Range"
+            [ test "Inclusive" <| \() -> parseInclusiveRange
+            , test "Inclusive with field" <| \() -> parseInclusiveRangeWithField
+            , test "Exclusive" <| \() -> parseExclusiveRange
+            , test "Left inclusive" <| \() -> parseLInclusiveRange
+            , test "Right inclusive" <| \() -> parseRInclusiveRange
+            , describe "Side unbounded"
+                [ test "gt" <| \() -> parseGtRange
+                , test "gte" <| \() -> parseGteRange
+                , test "lt" <| \() -> parseLtRange
+                , test "lte" <| \() -> parseLteRange
+                ]
+            ]
         ]
 
 
@@ -162,4 +176,82 @@ parseNotField =
         (Ok [ ENot <|
                 EPair
                     ( EField "status", ETerm "active" )
+            ])
+
+
+parseInclusiveRange : Expectation
+parseInclusiveRange =
+    Expect.equal
+        (parse "[1 TO 5]")
+        (Ok [ ERange <|
+                Inclusive (ETerm "1") (ETerm "5")
+            ])
+
+parseInclusiveRangeWithField : Expectation
+parseInclusiveRangeWithField =
+    Expect.equal
+        (parse "date:[2012-01-01 TO 2012-12-31]")
+        (Ok [ EPair <|
+                ( EField "date"
+                , ERange <|
+                    Inclusive (ETerm "2012-01-01") (ETerm "2012-12-31")
+                )
+            ])
+
+
+parseExclusiveRange : Expectation
+parseExclusiveRange =
+    Expect.equal
+        (parse "{alpha TO omega}")
+        (Ok [ ERange <|
+                Exclusive (ETerm "alpha") (ETerm "omega")
+            ])
+
+
+parseLInclusiveRange : Expectation
+parseLInclusiveRange =
+    Expect.equal
+        (parse "[alpha TO omega}")
+        (Ok [ ERange <|
+                LInclusive (ETerm "alpha") (ETerm "omega")
+            ])
+
+parseRInclusiveRange : Expectation
+parseRInclusiveRange =
+    Expect.equal
+        (parse "{alpha TO omega]")
+        (Ok [ ERange <|
+                RInclusive (ETerm "alpha") (ETerm "omega")
+            ])
+
+
+parseGtRange : Expectation
+parseGtRange =
+    Expect.equal
+        (parse ">10")
+        (Ok [ ERange <| SideUnbounded Gt (ETerm "10")
+            ])
+
+
+parseGteRange : Expectation
+parseGteRange =
+    Expect.equal
+        (parse ">=10")
+        (Ok [ ERange <| SideUnbounded Gte (ETerm "10")
+            ])
+
+
+parseLtRange : Expectation
+parseLtRange =
+    Expect.equal
+        (parse "<10")
+        (Ok [ ERange <| SideUnbounded Lt (ETerm "10")
+            ])
+
+
+parseLteRange : Expectation
+parseLteRange =
+    Expect.equal
+        (parse "<=10")
+        (Ok [ ERange <| SideUnbounded Lte (ETerm "10")
             ])

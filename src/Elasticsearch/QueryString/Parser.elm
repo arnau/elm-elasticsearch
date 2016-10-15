@@ -1,4 +1,5 @@
-module Elasticsearch.QueryString.Parser exposing (E(..), parse)
+module Elasticsearch.QueryString.Parser exposing
+    (E(..), Range(..), RangeOp(..), parse)
 
 import String
 import Combine exposing (..)
@@ -19,6 +20,22 @@ type E
     | EAnd E E
     | EOr E E
     | ENot E
+    | ERange Range
+
+
+type Range
+    = Inclusive E E  -- [a TO b]
+    | Exclusive E E  -- {a TO b}
+    | LInclusive E E -- [a TO b}
+    | RInclusive E E -- {a TO b]
+    | SideUnbounded RangeOp E -- age:>10
+
+
+type RangeOp
+    = Gt
+    | Gte
+    | Lt
+    | Lte
 
 
 parse : String -> Result String (List E)
@@ -58,7 +75,7 @@ atom =
 parsers : Parser E
 parsers =
     rec <| \() ->
-        choice [ pair, group, atom ]
+        choice [ pair, range, group, atom ]
 
 
 parsers' : Parser E
@@ -77,7 +94,7 @@ expr =
 subexpr : Parser E
 subexpr =
     rec <| \() ->
-        choice [ group, atom ]
+        choice [ range, group, atom ]
 
 
 whitespace : Parser String
@@ -101,10 +118,10 @@ quotes e =
 
 
 {-|
-    fox
 
 Wildcards are included as part of Term for the time being.
 
+    fox
     qu?ck bro*
 -}
 term : Parser E
@@ -180,6 +197,28 @@ slashes : Parser a -> Parser a
 slashes e =
     slash *> e <* slash
 
+
+lbrace : Parser String
+lbrace =
+    string "{"
+
+
+rbrace : Parser String
+rbrace =
+    string "}"
+
+
+lbracket : Parser String
+lbracket =
+    string "["
+
+
+rbracket : Parser String
+rbracket =
+    string "]"
+
+
+
 {-|
     name:/joh?n(ath[oa]n)/
 -}
@@ -198,7 +237,95 @@ regex' =
     count:[1 TO 5}
 -}
 range =
-    ""
+    rec <| \() ->
+        ERange
+            <$> (choice
+                    [ inclusiveRange
+                    , exclusiveRange
+                    , lInclusiveRange
+                    , rInclusiveRange
+                    , sideUnboundedRange
+                    ]
+                )
+
+
+inclusiveRange : Parser Range
+inclusiveRange =
+    rec <| \() ->
+        brackets
+            <| Inclusive `map` rangeLowerBound `andMap` rangeUpperBound
+            <?> "[to]"
+
+
+exclusiveRange : Parser Range
+exclusiveRange =
+    rec <| \() ->
+        braces
+            <| Exclusive `map` rangeLowerBound `andMap` rangeUpperBound
+            <?> "{to}"
+
+
+lInclusiveRange : Parser Range
+lInclusiveRange =
+    rec <| \() ->
+        (between lbracket rbrace)
+            <| LInclusive `map` rangeLowerBound `andMap` rangeUpperBound
+            <?> "[to}"
+
+
+rInclusiveRange : Parser Range
+rInclusiveRange =
+    rec <| \() ->
+        (between lbrace rbracket)
+            <| RInclusive `map` rangeLowerBound `andMap` rangeUpperBound
+            <?> "{to]"
+
+
+sideUnboundedRange : Parser Range
+sideUnboundedRange =
+    rec <| \() ->
+        SideUnbounded `map` rangeOp `andMap` term
+        <?> ">=<"
+
+
+rangeOp : Parser RangeOp
+rangeOp =
+    choice [ gteOp, gtOp, lteOp, ltOp ]
+
+
+gtOp : Parser RangeOp
+gtOp =
+    Gt <$ string ">"
+
+
+gteOp : Parser RangeOp
+gteOp =
+    Gte <$ string ">="
+
+
+ltOp : Parser RangeOp
+ltOp =
+    Lt <$ string "<"
+
+
+lteOp : Parser RangeOp
+lteOp =
+    Lte <$ string "<="
+
+
+rangeLowerBound =
+    term <* rangeInf
+
+
+rangeUpperBound =
+    term
+
+
+rangeInf : Parser String
+rangeInf =
+    ws <| string "TO"
+
+
 
 {-|
     age:>10

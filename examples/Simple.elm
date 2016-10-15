@@ -10,7 +10,8 @@ import Task
 import Combine exposing (..)
 import Combine.Infix exposing (..)
 import Combine.Num exposing (int)
-import Elasticsearch.QueryString.Parser as QS exposing (E(..))
+import Elasticsearch.QueryString.Parser as QS exposing
+    (E(..), Range(..), RangeOp(..))
 
 
 main =
@@ -33,7 +34,8 @@ type alias Model =
 
 model : Model
 model =
-    { content = "((quick AND fox) OR (brown AND fox) OR fox) AND NOT news" }
+    -- { content = "((quick AND fox) OR (brown AND fox) OR fox) AND NOT news" }
+    { content = "((quick AND is:fox) OR (/bro.?n/ AND \"fox trot\") OR date:[2016-10-15 TO 2016-10-20]) AND NOT news tag:{a TO s}" }
 
 
 
@@ -150,9 +152,53 @@ expression depth e =
                     (color, color, color)
                     ((op "NOT") :: [ (expression (depth + 1) e) ])
 
-        _ ->
-            token (255, 200, 150) (toString e)
+        ERange range ->
+            let
+                color =
+                    255 - (depth * 10)
 
+                rng (l, u) a b =
+                    group
+                        (color, color, color)
+                        (
+                            (text l)
+                            :: [ (expression (depth + 1) a) ]
+                            ++ [ (op "TO"), (expression (depth + 1) b), (text u)]
+                        )
+
+            in
+                case range of
+                    Inclusive a b ->
+                        rng ("[", "]") a b
+
+                    Exclusive a b ->
+                        rng ("{", "}") a b
+
+                    LInclusive a b ->
+                        rng ("[", "}") a b
+
+                    RInclusive a b ->
+                        rng ("{", "]") a b
+
+                    SideUnbounded rop a ->
+                        let
+                            op' =
+                                case rop of
+                                    Gt ->
+                                        ">"
+
+                                    Gte ->
+                                        ">="
+
+                                    Lt ->
+                                        "<"
+
+                                    Lte ->
+                                        "<="
+                        in
+                            group
+                                (color, color, color)
+                                [ (op op'), (expression (depth + 1) a) ]
 
 
 token color s =
