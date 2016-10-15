@@ -1,0 +1,18 @@
+{
+    "version": "1.0.0",
+    "summary": "Interface with Elasticsearch",
+    "repository": "https://github.com/arnau/elm-elasticsearch.git",
+    "license": "MIT",
+    "source-directories": [
+        "src"
+    ],
+    "exposed-modules": [
+        "Elasticsearch"
+    ],
+    "dependencies": {
+        "Bogdanp/elm-combine": "2.2.1 <= v < 3.0.0",
+        "elm-community/json-extra": "1.1.0 <= v < 2.0.0",
+        "elm-lang/core": "4.0.5 <= v < 5.0.0"
+    },
+    "elm-version": "0.17.1 <= v < 0.18.0"
+}
