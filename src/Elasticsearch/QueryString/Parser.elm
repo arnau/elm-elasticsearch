@@ -1,4 +1,4 @@
-module Elasticsearch.QueryString.Parser exposing (E(..), parse)
+module Elasticsearch.QueryString.Parser exposing (E(..), Range(..), parse)
 
 import String
 import Combine exposing (..)
@@ -19,6 +19,22 @@ type E
     | EAnd E E
     | EOr E E
     | ENot E
+    | ERange Range
+
+
+type Range
+    = Inclusive E E  -- [a TO b]
+    | Exclusive E E  -- {a TO b}
+    | LInclusive E E -- [a TO b}
+    | RInclusive E E -- {a TO b]
+    | SideUnbounded RangeOp E -- age:>10
+
+
+type RangeOp
+    = Gt
+    | Gte
+    | Lt
+    | Lte
 
 
 parse : String -> Result String (List E)
@@ -58,7 +74,7 @@ atom =
 parsers : Parser E
 parsers =
     rec <| \() ->
-        choice [ pair, group, atom ]
+        choice [ pair, range, group, atom ]
 
 
 parsers' : Parser E
@@ -77,7 +93,7 @@ expr =
 subexpr : Parser E
 subexpr =
     rec <| \() ->
-        choice [ group, atom ]
+        choice [ range, group, atom ]
 
 
 whitespace : Parser String
@@ -101,10 +117,10 @@ quotes e =
 
 
 {-|
-    fox
 
 Wildcards are included as part of Term for the time being.
 
+    fox
     qu?ck bro*
 -}
 term : Parser E
@@ -198,7 +214,32 @@ regex' =
     count:[1 TO 5}
 -}
 range =
-    ""
+    rec <| \() ->
+        ERange
+            <$> inclusiveRange
+
+
+inclusiveRange : Parser Range
+inclusiveRange =
+    rec <| \() ->
+        brackets
+            <| Inclusive `map` rangeLowerBound `andMap` rangeUpperBound
+            <?> "[to]"
+
+
+rangeLowerBound =
+    term <* rangeOp
+
+
+rangeUpperBound =
+    term
+
+
+rangeOp : Parser String
+rangeOp =
+    ws <| string "TO"
+
+
 
 {-|
     age:>10

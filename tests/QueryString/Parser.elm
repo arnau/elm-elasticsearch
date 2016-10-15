@@ -3,7 +3,7 @@ module QueryString.Parser exposing (all)
 import Test exposing (..)
 import Expect exposing (Expectation)
 
-import Elasticsearch.QueryString.Parser as QS exposing (E(..), parse)
+import Elasticsearch.QueryString.Parser as QS exposing (E(..), Range(..), parse)
 
 
 all : Test
@@ -26,6 +26,10 @@ all =
         , test "Not phrase" <| \() -> parseNotPhrase
         , test "Not regex" <| \() -> parseNotRegex
         , test "Not group" <| \() -> parseNotGroup
+        , describe "Range"
+            [ test "Inclusive" <| \() -> parseInclusiveRange
+            , test "Inclusive with field" <| \() -> parseInclusiveRangeWithField
+            ]
         ]
 
 
@@ -163,3 +167,25 @@ parseNotField =
                 EPair
                     ( EField "status", ETerm "active" )
             ])
+
+
+parseInclusiveRange : Expectation
+parseInclusiveRange =
+    Expect.equal
+        (parse "[1 TO 5]")
+        (Ok [ ERange <|
+                Inclusive (ETerm "1") (ETerm "5")
+            ])
+
+parseInclusiveRangeWithField : Expectation
+parseInclusiveRangeWithField =
+    Expect.equal
+        (parse "date:[2012-01-01 TO 2012-12-31]")
+        (Ok [ EPair <|
+                ( EField "date"
+                , ERange <|
+                    Inclusive (ETerm "2012-01-01") (ETerm "2012-12-31")
+                )
+            ])
+
+
