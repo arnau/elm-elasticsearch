@@ -38,7 +38,7 @@ program : Parser (List E)
 program =
     let
         all acc cx =
-            if cx.input == "" then
+            if String.isEmpty cx.input then
                 (Ok (List.reverse acc), cx)
             else
                 case app expr cx of
@@ -49,6 +49,7 @@ program =
                         (Err ms, cx')
     in
         primitive <| all []
+
 
 atom : Parser E
 atom =
@@ -247,7 +248,8 @@ notOp =
         <?> "not"
 
 
-{-|
+{-| NOT takes precedence over AND, which takes precedence over OR.
+
     (quick OR brown) AND fox
     status:(active OR pending) title:(full text search)^2
 -}
