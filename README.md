@@ -20,7 +20,7 @@ version is [Elasticsearch
   * [ ] Ranges (e.g. `date:[2012-01-01 TO 2012-12-31]`)
   * [ ] Boosting (e.g. `quick^2 fox`)
   * [ ] Simple Boolean operators (e.g. `quick brown +fox -news`)
-  * [-] Boolean operators (e.g. `((quick AND fox) OR (brown AND fox) OR fox) AND NOT news`)
+  * [x] Boolean operators (e.g. `((quick AND fox) OR (brown AND fox) OR fox) AND NOT news`)
   * [x] Grouping (e.g. `(quick OR brown) AND fox`)
   * [ ] Empty query
 * [ ] Simple query string parser (ref: https://www.elastic.co/guide/en/elasticsearch/reference/2.4/query-dsl-simple-query-string-query.html#_simple_query_string_syntax)
