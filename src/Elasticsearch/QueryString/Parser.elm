@@ -11,7 +11,6 @@ import Regex
 
 type E
     = ETerm String
-    | EWildTerm String
     | EPhrase String
     | EGroup (List E)
     | EPair (E, E)

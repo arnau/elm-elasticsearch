@@ -102,8 +102,6 @@ expression depth e =
         ETerm s ->
             token (150, 200, 255) s
 
-        -- EWildTerm String
-
         EPhrase s ->
             token (175, 250, 150) ("\"" ++ s ++ "\"")
 
