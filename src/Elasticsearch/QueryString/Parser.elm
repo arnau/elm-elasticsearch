@@ -216,7 +216,7 @@ regex' =
 range =
     rec <| \() ->
         ERange
-            <$> inclusiveRange
+            <$> (inclusiveRange `or` exclusiveRange)
 
 
 inclusiveRange : Parser Range
@@ -225,6 +225,14 @@ inclusiveRange =
         brackets
             <| Inclusive `map` rangeLowerBound `andMap` rangeUpperBound
             <?> "[to]"
+
+
+exclusiveRange : Parser Range
+exclusiveRange =
+    rec <| \() ->
+        braces
+            <| Exclusive `map` rangeLowerBound `andMap` rangeUpperBound
+            <?> "{to}"
 
 
 rangeLowerBound =

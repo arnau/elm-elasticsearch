@@ -29,6 +29,7 @@ all =
         , describe "Range"
             [ test "Inclusive" <| \() -> parseInclusiveRange
             , test "Inclusive with field" <| \() -> parseInclusiveRangeWithField
+            , test "Exclusive" <| \() -> parseExclusiveRange
             ]
         ]
 
@@ -189,3 +190,10 @@ parseInclusiveRangeWithField =
             ])
 
 
+parseExclusiveRange : Expectation
+parseExclusiveRange =
+    Expect.equal
+        (parse "{alpha TO omega}")
+        (Ok [ ERange <|
+                Exclusive (ETerm "alpha") (ETerm "omega")
+            ])
