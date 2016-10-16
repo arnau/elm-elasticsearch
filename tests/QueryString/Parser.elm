@@ -46,6 +46,9 @@ all =
             , test "Boost" <| \() -> parsePhraseBoost
             , test "Boost" <| \() -> parsePhraseProximityBoost
             ]
+        , describe "Group Modifier"
+            [ test "Boost" <| \() -> parseGroupBoost
+            ]
         ]
 
 
@@ -71,7 +74,7 @@ parseGroup =
         (parse "(fox quick)")
         (Ok [ (EGroup [ ETerm "fox" Nothing Nothing
                       , ETerm "quick" Nothing Nothing
-                      ])
+                      ] Nothing)
             ])
 
 
@@ -104,6 +107,7 @@ parseFieldWithGroup =
                     , EGroup [ ETerm "quick" Nothing Nothing
                              , ETerm "brown" Nothing Nothing
                              ]
+                             Nothing
                     )
             ])
 
@@ -179,6 +183,7 @@ parseNotGroup =
                     [ ETerm "quick" Nothing Nothing
                     , ETerm "brown" Nothing Nothing
                     ]
+                    Nothing
             ])
 
 
@@ -351,3 +356,17 @@ parsePhraseProximityBoost =
         (parse "quick~1^2")
         (Ok [ ETerm "quick" (Just 1) (Just 2)
             ])
+
+
+parseGroupBoost : Expectation
+parseGroupBoost =
+    Expect.equal
+        (parse "(fox quick)^3")
+        (Ok [ EGroup
+                [ ETerm "fox" Nothing Nothing
+                , ETerm "quick" Nothing Nothing
+                ]
+                (Just 3)
+            ])
+
+

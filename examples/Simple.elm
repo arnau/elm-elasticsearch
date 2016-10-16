@@ -63,9 +63,9 @@ model =
         , "age:<10"
         , "age:<=10"
         , "quick^2 fox"
-        -- , "\"john smith\"^2 (foo bar)^4"
+        , "\"john smith\"^2 (foo bar)^4"
         , "(quick OR brown) AND fox"
-        -- , "status:(active OR pending) title:(full text search)^2"
+        , "status:(active OR pending) title:(full text search)^2"
         , "quikc~ brwn~ foks~"
         , "quikc~1"
         , "\"fox quick\"~5"
@@ -150,14 +150,12 @@ expression depth e =
         EPhrase s p b ->
             phrase s p b
 
-        EGroup xs ->
+        EGroup xs b ->
             let
-                color =
-                    255 - (depth * 10)
                 ys =
                     List.map (expression (depth + 1)) xs
             in
-                group (color, color, color) ((text "(") :: ys ++ [(text ")")])
+                group' depth ((text "(") :: ys ++ ((text ")") :: boostToView b))
 
         EPair (f, t) ->
             group (200, 230, 255) [ expression 0 f, expression (depth + 1) t ]

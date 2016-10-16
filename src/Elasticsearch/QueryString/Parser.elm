@@ -14,7 +14,7 @@ import Regex
 type E
     = ETerm String Fuzziness Boost
     | EPhrase String Proximity Boost
-    | EGroup (List E)
+    | EGroup (List E) Boost
     | EPair (E, E)
     | EField String
     | ERegex String
@@ -160,6 +160,7 @@ group =
     rec <| \() ->
         EGroup
             <$> parens (many1 expr)
+            <*> boost
             <?> "group"
 
 
