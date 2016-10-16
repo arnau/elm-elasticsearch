@@ -21,6 +21,8 @@ type E
     | EAnd E E
     | EOr E E
     | ENot E
+    | EMust E
+    | EMustNot E
     | ERange Range
 
 
@@ -92,7 +94,7 @@ parsers =
 
 parsers' : Parser E
 parsers' =
-    (ws <| notOp) <*> parsers
+     (ws <| notOp) `or` (mustOp `or` mustNotOp) <*> parsers
 
 
 expr : Parser E
@@ -139,7 +141,7 @@ Wildcards are included as part of Term for the time being.
 term : Parser E
 term =
     ETerm
-        <$> regex "[\\w\\d*?_-]+"
+        <$> regex "[\\w\\d*?][\\w\\d*?_-]*"
         <*> fuzziness
         <*> boost
         <?> "term"
@@ -374,22 +376,36 @@ conciseBool =
 orOp : Parser (E -> E -> E)
 orOp =
     EOr
-        <$ string "OR"
+        <$ (string "OR" `or` string "||")
         <?> "or"
 
 
 andOp : Parser (E -> E -> E)
 andOp =
     EAnd
-        <$ string "AND"
+        <$ (string "AND" `or` string "&&")
         <?> "and"
 
 
 notOp : Parser (E -> E)
 notOp =
     ENot
-        <$ string "NOT"
+        <$ (string "NOT" `or` string "!")
         <?> "not"
+
+
+mustOp : Parser (E -> E)
+mustOp =
+    EMust
+        <$ (string "+")
+        <?> "must"
+
+
+mustNotOp : Parser (E -> E)
+mustNotOp =
+    EMustNot
+        <$ (string "-")
+        <?> "must not"
 
 
 {-| NOT takes precedence over AND, which takes precedence over OR.
