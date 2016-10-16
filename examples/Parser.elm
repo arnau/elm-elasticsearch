@@ -1,4 +1,4 @@
-module Simple exposing (..)
+module Parser exposing (..)
 
 import Dom
 import Html.App as App
@@ -100,7 +100,8 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div [ style [ ( "padding", "1rem" ) ] ]
-        [ input
+        [ h1 [] [ text "Example: Query string parser" ]
+        , input
             [ onInput Change
             , value model.content
             , style [ ( "font-size", "1.5rem" ), ( "width", "100%" ) ]
@@ -115,7 +116,20 @@ view model =
         ]
 
 asItem x =
-    li [] [ astView x ]
+    li
+        [ style [ ( "padding", "1rem" ) ] ]
+        [ div
+            []
+            [ code
+                [ style [ ( "background-color", "rgb(230, 230, 230)" )
+                        , ( "padding", "0.4rem" )
+                        , ( "display", "inline-block" )
+                        ]
+                ]
+                [ text x ]
+            ]
+        , astView x
+        ]
 
 
 astView content =
