@@ -40,12 +40,11 @@ all =
                 , test "lte" <| \() -> parseLteRange
                 ]
             ]
-        , describe "Term Modifier"
-            [ test "Fuzziness" <| \() -> parseFuzziness
-            , test "Fuzziness with default" <| \() -> parseFuzzinessDefault
-            , test "Fuzziness with field" <| \() -> parseFuzzinessWithField
-            , test "Boost" <| \() -> parseTermBoost
-            , test "Boost" <| \() -> parseTermFuzzinessBoost
+        , describe "Phrase Modifier"
+            [ test "Proximity" <| \() -> parseProximity
+            , test "Fuzziness with default" <| \() -> parseProximityDefault
+            , test "Boost" <| \() -> parsePhraseBoost
+            , test "Boost" <| \() -> parsePhraseProximityBoost
             ]
         ]
 
@@ -63,7 +62,7 @@ parseMultipleTerms =
 
 parsePhrase : Expectation
 parsePhrase =
-    Expect.equal (parse "\"fox quick\"") (Ok [ (EPhrase "fox quick") ])
+    Expect.equal (parse "\"fox quick\"") (Ok [ (EPhrase "fox quick" Nothing Nothing) ])
 
 
 parseGroup : Expectation
@@ -94,7 +93,7 @@ parseFieldWithPhrase : Expectation
 parseFieldWithPhrase =
     Expect.equal
         (parse "author:\"John Smith\"")
-        (Ok [ EPair ( EField "author", EPhrase "John Smith" ) ])
+        (Ok [ EPair ( EField "author", EPhrase "John Smith" Nothing Nothing) ])
 
 
 parseFieldWithGroup : Expectation
@@ -158,7 +157,7 @@ parseNotPhrase =
     Expect.equal
         (parse "NOT \"fox quick\"")
         (Ok [ ENot
-                (EPhrase "fox quick")
+                (EPhrase "fox quick" Nothing Nothing)
             ])
 
 
@@ -316,6 +315,38 @@ parseTermBoost =
 
 parseTermFuzzinessBoost : Expectation
 parseTermFuzzinessBoost =
+    Expect.equal
+        (parse "quick~1^2")
+        (Ok [ ETerm "quick" (Just 1) (Just 2)
+            ])
+
+
+parseProximity : Expectation
+parseProximity =
+    Expect.equal
+        (parse "\"quick fox\"~2")
+        (Ok [ EPhrase "quick fox" (Just 2) Nothing
+            ])
+
+
+parseProximityDefault : Expectation
+parseProximityDefault =
+    Expect.equal
+        (parse "\"quick fox\"~")
+        (Ok [ EPhrase "quick fox" (Just 2) Nothing
+            ])
+
+
+parsePhraseBoost : Expectation
+parsePhraseBoost =
+    Expect.equal
+        (parse "\"quick fox\"^2")
+        (Ok [ EPhrase "quick fox" Nothing (Just 2)
+            ])
+
+
+parsePhraseProximityBoost : Expectation
+parsePhraseProximityBoost =
     Expect.equal
         (parse "quick~1^2")
         (Ok [ ETerm "quick" (Just 1) (Just 2)

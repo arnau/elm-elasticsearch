@@ -13,7 +13,7 @@ import Regex
 
 type E
     = ETerm String Fuzziness Boost
-    | EPhrase String
+    | EPhrase String Proximity Boost
     | EGroup (List E)
     | EPair (E, E)
     | EField String
@@ -29,6 +29,9 @@ type alias Fuzziness =
 
 
 type alias Boost =
+    Maybe Int
+
+type alias Proximity =
     Maybe Int
 
 
@@ -147,6 +150,8 @@ phrase : Parser E
 phrase =
     EPhrase
         <$> quotes (regex "[\\ \\w\\d*?_-]+")
+        <*> proximity
+        <*> boost
         <?> "phrase"
 
 {-| (fox quick) -}
@@ -410,11 +415,9 @@ fuzziness =
 {-|
     "fox quick"~5
 -}
--- proximity : Parser Modifier
+proximity : Parser Proximity
 proximity =
-    ""
---     Proximity
---         <$> ((string "~") *> int)
+    maybe ((string "~") *> (int `or` (succeed 2)))
 
 
 {-|

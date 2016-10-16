@@ -68,6 +68,7 @@ model =
         -- , "status:(active OR pending) title:(full text search)^2"
         , "quikc~ brwn~ foks~"
         , "quikc~1"
+        , "\"fox quick\"~5"
         ]
     }
 
@@ -146,8 +147,8 @@ expression depth e =
         ETerm s f b ->
             term s f b
 
-        EPhrase s ->
-            token (175, 250, 150) ("\"" ++ s ++ "\"")
+        EPhrase s p b ->
+            phrase s p b
 
         EGroup xs ->
             let
@@ -252,6 +253,20 @@ boostToView x =
 
 boostView x =
     [ (op "^"), text (toString x) ]
+
+phrase s p b =
+    wrapper
+        (150, 220, 100)
+        ((token (175, 250, 150) s)
+            :: (proximityToView p) ++ (boostToView b))
+
+
+proximityToView x =
+    Maybe.withDefault emptyText (Maybe.map proximityView x)
+
+
+proximityView x =
+    [ (op "~"), text (toString x) ]
 
 
 emptyText =
