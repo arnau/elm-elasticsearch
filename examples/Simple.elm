@@ -11,7 +11,7 @@ import Combine exposing (..)
 import Combine.Infix exposing (..)
 import Combine.Num exposing (int)
 import Elasticsearch.QueryString.Parser as QS exposing
-    (E(..), Range(..), RangeOp(..))
+    (E(..), Range(..), RangeOp(..), Modifier(..))
 
 
 main =
@@ -29,13 +29,47 @@ main =
 
 type alias Model =
     { content : String
+    , showcase : List String
     }
 
 
 model : Model
 model =
     -- { content = "((quick AND fox) OR (brown AND fox) OR fox) AND NOT news" }
-    { content = "((quick AND is:fox) OR (/bro.?n/ AND \"fox trot\") OR date:[2016-10-15 TO 2016-10-20]) AND NOT news tag:{a TO s}" }
+    { content = "((quick AND is:fox) OR (/bro.?n/ AND \"fox trot\") OR date:[2016-10-15 TO 2016-10-20]) AND NOT news tag:{a TO s}"
+    , showcase =
+        [ "((quick AND fox) OR (brown AND fox) OR fox) AND NOT news"
+        , "fox"
+        , "qu?ck bro*"
+        , "\"fox quick\""
+        , "(fox quick)"
+        , "status:active"
+        , "title:(quick OR brown)"
+        , "title:(quick brown)"
+        , "author:\"John Smith\""
+        -- , "book.\\*:(quick brown)"
+        , "field1:foo"
+        , "_missing_:title"
+        , "_exists_:title"
+        , "name:/joh?n(ath[oa]n)/"
+        , "date:[2012-01-01 TO 2012-12-31]"
+        , "count:[1 TO 5]"
+        , "tag:{alpha TO omega}"
+        , "count:[10 TO *]"
+        , "date:{* TO 2012-01-01}"
+        , "count:[1 TO 5}"
+        , "age:>10"
+        , "age:>=10"
+        , "age:<10"
+        , "age:<=10"
+        -- , "quick^2 fox"
+        -- , "\"john smith\"^2 (foo bar)^4"
+        , "(quick OR brown) AND fox"
+        -- , "status:(active OR pending) title:(full text search)^2"
+        , "quikc~ brwn~ foks~"
+        , "quikc~1"
+        ]
+    }
 
 
 
@@ -71,7 +105,15 @@ view model =
             ]
             []
         , astView model.content
+        , div
+            []
+            [ h2 [] [ text "Showcase" ]
+            , ul [] (List.map asItem model.showcase)
+            ]
         ]
+
+asItem x =
+    li [] [ astView x ]
 
 
 astView content =
@@ -126,40 +168,25 @@ expression depth e =
             token (255, 250, 150) ("/" ++ s ++ "/")
 
         EAnd a b ->
-            let
-                color =
-                    255 - (depth * 10)
-            in
-                group
-                    (color, color, color)
-                    ((expression (depth + 1) a) :: [ (op "AND"), (expression (depth + 1) b) ])
+            group'
+                depth
+                ((expression (depth + 1) a) :: [ (op "AND"), (expression (depth + 1) b) ])
 
         EOr a b ->
-            let
-                color =
-                    255 - (depth * 10)
-            in
-                group
-                    (color, color, color)
-                    ((expression (depth + 1) a) :: [ (op "OR"), (expression (depth + 1) b) ])
+            group
+                depth
+                ((expression (depth + 1) a) :: [ (op "OR"), (expression (depth + 1) b) ])
 
         ENot e ->
-            let
-                color =
-                    255 - (depth * 10)
-            in
-                group
-                    (color, color, color)
-                    ((op "NOT") :: [ (expression (depth + 1) e) ])
+            group'
+                depth
+                ((op "NOT") :: [ (expression (depth + 1) e) ])
 
         ERange range ->
             let
-                color =
-                    255 - (depth * 10)
-
                 rng (l, u) a b =
-                    group
-                        (color, color, color)
+                    group'
+                        depth
                         (
                             (text l)
                             :: [ (expression (depth + 1) a) ]
@@ -196,9 +223,26 @@ expression depth e =
                                     Lte ->
                                         "<="
                         in
-                            group
-                                (color, color, color)
+                            group'
+                                depth
                                 [ (op op'), (expression (depth + 1) a) ]
+
+        EModifier a m ->
+            group' depth <| (expression (depth + 1) a) :: (modifier m)
+
+        -- _ ->
+        --     token (255, 200, 150) (toString e)
+
+modifier m =
+    case m of
+        Fuzziness x ->
+            [ (op "~"), text (toString x) ]
+
+        Proximity x ->
+            [ (op "~"), text (toString x) ]
+
+        Boost x ->
+            [ (op "^"), text (toString x) ]
 
 
 token color s =
@@ -219,6 +263,13 @@ group color xs =
                 , ( "margin", "2px" )
                 ] ]
         xs
+
+group' depth xs =
+    let
+        color =
+            255 - (depth * 10)
+    in
+        group (color, color, color) xs
 
 op s =
     span

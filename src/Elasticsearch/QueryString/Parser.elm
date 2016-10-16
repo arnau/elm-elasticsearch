@@ -1,10 +1,11 @@
 module Elasticsearch.QueryString.Parser exposing
-    (E(..), Range(..), RangeOp(..), parse)
+    (E(..), Range(..), RangeOp(..), Modifier(..), parse)
 
 import String
 import Combine exposing (..)
 import Combine.Char exposing (..)
 import Combine.Infix exposing (..)
+import Combine.Num exposing (int)
 import Regex
 
 
@@ -21,7 +22,7 @@ type E
     | EOr E E
     | ENot E
     | ERange Range
-    | EModifier Modifier
+    | EModifier E Modifier
 
 
 type Range
@@ -76,7 +77,7 @@ program =
 
 atom : Parser E
 atom =
-    choice [ regex', phrase, term ]
+    choice [ modifier, regex', phrase, term ]
 
 
 parsers : Parser E
@@ -399,13 +400,30 @@ op =
         orOp `or` andOp
 
 
-{-|
+modifier : Parser E
+modifier =
+    EModifier
+        <$> term `andMap` fuzziness
+
+{-| Fuzziness with default edit distance of 2
+
     quikc~ brwn~ foks~
     quikc~1
+-}
+fuzziness : Parser Modifier
+fuzziness =
+    Fuzziness
+        <$> ((string "~") *> (int `or` (succeed 2)))
+
+
+{-|
     "fox quick"~5
 -}
+proximity : Parser Modifier
 proximity =
-    ""
+    Proximity
+        <$> ((string "~") *> int)
+
 
 {-|
     The reserved characters are: + - = && || > < ! ( ) { } [ ] ^ " ~ * ? : \ /

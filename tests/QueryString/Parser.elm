@@ -4,7 +4,7 @@ import Test exposing (..)
 import Expect exposing (Expectation)
 
 import Elasticsearch.QueryString.Parser as QS exposing
-    (E(..), Range(..), RangeOp(..), parse)
+    (E(..), Range(..), RangeOp(..), Modifier(..), parse)
 
 
 all : Test
@@ -39,6 +39,11 @@ all =
                 , test "lt" <| \() -> parseLtRange
                 , test "lte" <| \() -> parseLteRange
                 ]
+            ]
+        , describe "Modifier"
+            [ test "Fuzziness" <| \() -> parseFuzziness
+            , test "Fuzziness with default" <| \() -> parseFuzzinessDefault
+            , test "Fuzziness with field" <| \() -> parseFuzzinessWithField
             ]
         ]
 
@@ -254,4 +259,28 @@ parseLteRange =
     Expect.equal
         (parse "<=10")
         (Ok [ ERange <| SideUnbounded Lte (ETerm "10")
+            ])
+
+
+parseFuzziness : Expectation
+parseFuzziness =
+    Expect.equal
+        (parse "quick~1")
+        (Ok [ EModifier (ETerm "quick") (Fuzziness 1)
+            ])
+
+parseFuzzinessDefault : Expectation
+parseFuzzinessDefault =
+    Expect.equal
+        (parse "quick~")
+        (Ok [ EModifier (ETerm "quick") (Fuzziness 2)
+            ])
+
+
+parseFuzzinessWithField : Expectation
+parseFuzzinessWithField =
+    Expect.equal
+        (parse "is:quick~")
+        (Ok [ EPair <|
+                ( EField "is", EModifier (ETerm "quick") (Fuzziness 2) )
             ])
