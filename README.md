@@ -19,7 +19,7 @@ version is [Elasticsearch
   * [x] Proximity searches (e.g. `"fox quick"~5`)
   * [x] Ranges (e.g. `date:[2012-01-01 TO 2012-12-31]`)
   * [x] Boosting (e.g. `quick^2 fox`)
-  * [ ] Simple Boolean operators (e.g. `quick brown +fox -news`)
+  * [x] Simple Boolean operators (e.g. `quick brown +fox -news`)
   * [x] Boolean operators (e.g. `((quick AND fox) OR (brown AND fox) OR fox) AND NOT news`)
   * [x] Grouping (e.g. `(quick OR brown) AND fox`)
   * [ ] Empty query
