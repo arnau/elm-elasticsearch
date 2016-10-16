@@ -5,7 +5,7 @@ import String
 import Combine exposing (..)
 import Combine.Char exposing (..)
 import Combine.Infix exposing (..)
-import Combine.Num exposing (int)
+import Combine.Num exposing (int, float)
 import Regex
 
 
@@ -29,7 +29,7 @@ type alias Fuzziness =
 
 
 type alias Boost =
-    Maybe Int
+    Maybe Float
 
 type alias Proximity =
     Maybe Int
@@ -428,7 +428,7 @@ proximity =
 -}
 boost : Parser Boost
 boost =
-    maybe ((string "^") *> int)
+    maybe ((string "^") *> (float `or` (toFloat <$> int)))
 
 
 {-|

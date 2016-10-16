@@ -376,5 +376,5 @@ parseGroupBoost =
 parseRegexBoost : Expectation
 parseRegexBoost =
     Expect.equal
-        (parse "/joh?n(ath[oa]n)/^2")
-        (Ok [ ERegex "joh?n(ath[oa]n)" (Just 2) ])
+        (parse "/joh?n(ath[oa]n)/^0.5")
+        (Ok [ ERegex "joh?n(ath[oa]n)" (Just 0.5) ])
