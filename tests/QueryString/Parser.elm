@@ -4,7 +4,7 @@ import Test exposing (..)
 import Expect exposing (Expectation)
 
 import Elasticsearch.QueryString.Parser as QS exposing
-    (E(..), Range(..), RangeOp(..), Modifier(..), parse)
+    (E(..), Range(..), RangeOp(..), parse)
 
 
 all : Test
@@ -40,21 +40,25 @@ all =
                 , test "lte" <| \() -> parseLteRange
                 ]
             ]
-        , describe "Modifier"
+        , describe "Term Modifier"
             [ test "Fuzziness" <| \() -> parseFuzziness
             , test "Fuzziness with default" <| \() -> parseFuzzinessDefault
             , test "Fuzziness with field" <| \() -> parseFuzzinessWithField
+            , test "Boost" <| \() -> parseTermBoost
+            , test "Boost" <| \() -> parseTermFuzzinessBoost
             ]
         ]
 
 
 parseTerm : Expectation
 parseTerm =
-    Expect.equal (parse "fox") (Ok [ (ETerm "fox") ])
+    Expect.equal (parse "fox") (Ok [ (ETerm "fox" Nothing Nothing) ])
 
 parseMultipleTerms : Expectation
 parseMultipleTerms =
-    Expect.equal (parse "fox quick") (Ok [ ETerm "fox", ETerm "quick" ])
+    Expect.equal
+        (parse "fox quick")
+        (Ok [ ETerm "fox" Nothing Nothing, ETerm "quick" Nothing Nothing ])
 
 
 parsePhrase : Expectation
@@ -66,21 +70,24 @@ parseGroup : Expectation
 parseGroup =
     Expect.equal
         (parse "(fox quick)")
-        (Ok [ (EGroup [ ETerm "fox", ETerm "quick" ]) ])
+        (Ok [ (EGroup [ ETerm "fox" Nothing Nothing
+                      , ETerm "quick" Nothing Nothing
+                      ])
+            ])
 
 
 parseField : Expectation
 parseField =
     Expect.equal
         (parse "status:active")
-        (Ok [ EPair ( EField "status", ETerm "active" ) ])
+        (Ok [ EPair ( EField "status", ETerm "active" Nothing Nothing ) ])
 
 
 parseFieldWild : Expectation
 parseFieldWild =
     Expect.equal
         (parse "book\\.*:quick")
-        (Ok [ EPair ( EField "book\\.*", ETerm "quick" ) ])
+        (Ok [ EPair ( EField "book\\.*", ETerm "quick" Nothing Nothing ) ])
 
 
 parseFieldWithPhrase : Expectation
@@ -95,8 +102,10 @@ parseFieldWithGroup =
     Expect.equal
         (parse "title:(quick brown)")
         (Ok [ EPair ( EField "title"
-                        , EGroup [ ETerm "quick", ETerm "brown" ]
-                        )
+                    , EGroup [ ETerm "quick" Nothing Nothing
+                             , ETerm "brown" Nothing Nothing
+                             ]
+                    )
             ])
 
 
@@ -110,8 +119,8 @@ parseAnd =
     Expect.equal
         (parse "quick AND brown")
         (Ok [ EAnd
-                (ETerm "quick")
-                (ETerm "brown")
+                (ETerm "quick" Nothing Nothing)
+                (ETerm "brown" Nothing Nothing)
             ])
 
 
@@ -120,8 +129,8 @@ parseOr =
     Expect.equal
         (parse "quick OR brown")
         (Ok [ EOr
-                (ETerm "quick")
-                (ETerm "brown")
+                (ETerm "quick" Nothing Nothing)
+                (ETerm "brown" Nothing Nothing)
             ])
 
 
@@ -130,8 +139,8 @@ parseAndOr =
     Expect.equal
         (parse "quick AND brown OR else")
         (Ok [ EOr
-                (EAnd (ETerm "quick") (ETerm "brown"))
-                (ETerm "else")
+                (EAnd (ETerm "quick" Nothing Nothing) (ETerm "brown" Nothing Nothing))
+                (ETerm "else" Nothing Nothing)
             ])
 
 
@@ -140,7 +149,7 @@ parseNotTerm =
     Expect.equal
         (parse "NOT quick")
         (Ok [ ENot
-                (ETerm "quick")
+                (ETerm "quick" Nothing Nothing)
             ])
 
 
@@ -168,8 +177,8 @@ parseNotGroup =
         (parse "NOT (quick brown)")
         (Ok [ ENot <|
                 EGroup
-                    [ ETerm "quick"
-                    , ETerm "brown"
+                    [ ETerm "quick" Nothing Nothing
+                    , ETerm "brown" Nothing Nothing
                     ]
             ])
 
@@ -180,7 +189,7 @@ parseNotField =
         (parse "NOT status:active")
         (Ok [ ENot <|
                 EPair
-                    ( EField "status", ETerm "active" )
+                    ( EField "status", ETerm "active" Nothing Nothing)
             ])
 
 
@@ -189,7 +198,9 @@ parseInclusiveRange =
     Expect.equal
         (parse "[1 TO 5]")
         (Ok [ ERange <|
-                Inclusive (ETerm "1") (ETerm "5")
+                Inclusive
+                    (ETerm "1" Nothing Nothing)
+                    (ETerm "5" Nothing Nothing)
             ])
 
 parseInclusiveRangeWithField : Expectation
@@ -199,7 +210,9 @@ parseInclusiveRangeWithField =
         (Ok [ EPair <|
                 ( EField "date"
                 , ERange <|
-                    Inclusive (ETerm "2012-01-01") (ETerm "2012-12-31")
+                    Inclusive
+                        (ETerm "2012-01-01" Nothing Nothing)
+                        (ETerm "2012-12-31" Nothing Nothing)
                 )
             ])
 
@@ -209,7 +222,9 @@ parseExclusiveRange =
     Expect.equal
         (parse "{alpha TO omega}")
         (Ok [ ERange <|
-                Exclusive (ETerm "alpha") (ETerm "omega")
+                Exclusive
+                    (ETerm "alpha" Nothing Nothing)
+                    (ETerm "omega" Nothing Nothing)
             ])
 
 
@@ -218,7 +233,9 @@ parseLInclusiveRange =
     Expect.equal
         (parse "[alpha TO omega}")
         (Ok [ ERange <|
-                LInclusive (ETerm "alpha") (ETerm "omega")
+                LInclusive
+                    (ETerm "alpha" Nothing Nothing)
+                    (ETerm "omega" Nothing Nothing)
             ])
 
 parseRInclusiveRange : Expectation
@@ -226,7 +243,9 @@ parseRInclusiveRange =
     Expect.equal
         (parse "{alpha TO omega]")
         (Ok [ ERange <|
-                RInclusive (ETerm "alpha") (ETerm "omega")
+                RInclusive
+                    (ETerm "alpha" Nothing Nothing)
+                    (ETerm "omega" Nothing Nothing)
             ])
 
 
@@ -234,7 +253,7 @@ parseGtRange : Expectation
 parseGtRange =
     Expect.equal
         (parse ">10")
-        (Ok [ ERange <| SideUnbounded Gt (ETerm "10")
+        (Ok [ ERange <| SideUnbounded Gt (ETerm "10" Nothing Nothing)
             ])
 
 
@@ -242,7 +261,7 @@ parseGteRange : Expectation
 parseGteRange =
     Expect.equal
         (parse ">=10")
-        (Ok [ ERange <| SideUnbounded Gte (ETerm "10")
+        (Ok [ ERange <| SideUnbounded Gte (ETerm "10" Nothing Nothing)
             ])
 
 
@@ -250,7 +269,7 @@ parseLtRange : Expectation
 parseLtRange =
     Expect.equal
         (parse "<10")
-        (Ok [ ERange <| SideUnbounded Lt (ETerm "10")
+        (Ok [ ERange <| SideUnbounded Lt (ETerm "10" Nothing Nothing)
             ])
 
 
@@ -258,7 +277,7 @@ parseLteRange : Expectation
 parseLteRange =
     Expect.equal
         (parse "<=10")
-        (Ok [ ERange <| SideUnbounded Lte (ETerm "10")
+        (Ok [ ERange <| SideUnbounded Lte (ETerm "10" Nothing Nothing)
             ])
 
 
@@ -266,14 +285,14 @@ parseFuzziness : Expectation
 parseFuzziness =
     Expect.equal
         (parse "quick~1")
-        (Ok [ EModifier (ETerm "quick") (Fuzziness 1)
+        (Ok [ ETerm "quick" (Just 1) Nothing
             ])
 
 parseFuzzinessDefault : Expectation
 parseFuzzinessDefault =
     Expect.equal
         (parse "quick~")
-        (Ok [ EModifier (ETerm "quick") (Fuzziness 2)
+        (Ok [ ETerm "quick" (Just 2) Nothing
             ])
 
 
@@ -282,5 +301,22 @@ parseFuzzinessWithField =
     Expect.equal
         (parse "is:quick~")
         (Ok [ EPair <|
-                ( EField "is", EModifier (ETerm "quick") (Fuzziness 2) )
+                ( EField "is", ETerm "quick" (Just 2) Nothing )
+            ])
+
+
+parseTermBoost : Expectation
+parseTermBoost =
+    Expect.equal
+        (parse "quick^2 fox")
+        (Ok [ ETerm "quick" Nothing (Just 2)
+            , ETerm "fox" Nothing Nothing
+            ])
+
+
+parseTermFuzzinessBoost : Expectation
+parseTermFuzzinessBoost =
+    Expect.equal
+        (parse "quick~1^2")
+        (Ok [ ETerm "quick" (Just 1) (Just 2)
             ])

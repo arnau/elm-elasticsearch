@@ -1,5 +1,5 @@
 module Elasticsearch.QueryString.Parser exposing
-    (E(..), Range(..), RangeOp(..), Modifier(..), parse)
+    (E(..), Range(..), RangeOp(..), parse)
 
 import String
 import Combine exposing (..)
@@ -12,7 +12,7 @@ import Regex
 -- Parser
 
 type E
-    = ETerm String
+    = ETerm String Fuzziness Boost
     | EPhrase String
     | EGroup (List E)
     | EPair (E, E)
@@ -22,7 +22,14 @@ type E
     | EOr E E
     | ENot E
     | ERange Range
-    | EModifier E Modifier
+
+
+type alias Fuzziness =
+    Maybe Int
+
+
+type alias Boost =
+    Maybe Int
 
 
 type Range
@@ -38,12 +45,6 @@ type RangeOp
     | Gte
     | Lt
     | Lte
-
-
-type Modifier
-    = Fuzziness Int
-    | Proximity Int
-    | Boost Int
 
 
 parse : String -> Result String (List E)
@@ -77,7 +78,7 @@ program =
 
 atom : Parser E
 atom =
-    choice [ modifier, regex', phrase, term ]
+    choice [ regex', phrase, term ]
 
 
 parsers : Parser E
@@ -136,6 +137,8 @@ term : Parser E
 term =
     ETerm
         <$> regex "[\\w\\d*?_-]+"
+        <*> fuzziness
+        <*> boost
         <?> "term"
 
 
@@ -354,13 +357,6 @@ rangeInf =
 
 
 {-|
-    quick^2 fox
-    "john smith"^2   (foo bar)^4
--}
-boost =
-    ""
-
-{-|
     quick brown +fox -news
 -}
 conciseBool =
@@ -400,29 +396,34 @@ op =
         orOp `or` andOp
 
 
-modifier : Parser E
-modifier =
-    EModifier
-        <$> term `andMap` fuzziness
 
 {-| Fuzziness with default edit distance of 2
 
     quikc~ brwn~ foks~
     quikc~1
 -}
-fuzziness : Parser Modifier
+fuzziness : Parser Fuzziness
 fuzziness =
-    Fuzziness
-        <$> ((string "~") *> (int `or` (succeed 2)))
+    maybe ((string "~") *> (int `or` (succeed 2)))
 
 
 {-|
     "fox quick"~5
 -}
-proximity : Parser Modifier
+-- proximity : Parser Modifier
 proximity =
-    Proximity
-        <$> ((string "~") *> int)
+    ""
+--     Proximity
+--         <$> ((string "~") *> int)
+
+
+{-|
+    quick^2 fox
+    "john smith"^2   (foo bar)^4
+-}
+boost : Parser Boost
+boost =
+    maybe ((string "^") *> int)
 
 
 {-|

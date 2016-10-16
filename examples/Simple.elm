@@ -11,7 +11,7 @@ import Combine exposing (..)
 import Combine.Infix exposing (..)
 import Combine.Num exposing (int)
 import Elasticsearch.QueryString.Parser as QS exposing
-    (E(..), Range(..), RangeOp(..), Modifier(..))
+    (E(..), Range(..), RangeOp(..))
 
 
 main =
@@ -62,7 +62,7 @@ model =
         , "age:>=10"
         , "age:<10"
         , "age:<=10"
-        -- , "quick^2 fox"
+        , "quick^2 fox"
         -- , "\"john smith\"^2 (foo bar)^4"
         , "(quick OR brown) AND fox"
         -- , "status:(active OR pending) title:(full text search)^2"
@@ -143,8 +143,8 @@ item' x xs =
 
 expression depth e =
     case e of
-        ETerm s ->
-            token (150, 200, 255) s
+        ETerm s f b ->
+            term s f b
 
         EPhrase s ->
             token (175, 250, 150) ("\"" ++ s ++ "\"")
@@ -227,22 +227,35 @@ expression depth e =
                                 depth
                                 [ (op op'), (expression (depth + 1) a) ]
 
-        EModifier a m ->
-            group' depth <| (expression (depth + 1) a) :: (modifier m)
-
         -- _ ->
         --     token (255, 200, 150) (toString e)
 
-modifier m =
-    case m of
-        Fuzziness x ->
-            [ (op "~"), text (toString x) ]
 
-        Proximity x ->
-            [ (op "~"), text (toString x) ]
+term s f b =
+    wrapper
+        (120, 180, 255)
+        ((token (150, 200, 255) s)
+            :: (fuzzinessToView f) ++ (boostToView b))
 
-        Boost x ->
-            [ (op "^"), text (toString x) ]
+
+fuzzinessToView x =
+    Maybe.withDefault emptyText (Maybe.map fuzzinessView x)
+
+
+fuzzinessView x =
+    [ (op "~"), text (toString x) ]
+
+
+boostToView x =
+    Maybe.withDefault emptyText (Maybe.map boostView x)
+
+
+boostView x =
+    [ (op "^"), text (toString x) ]
+
+
+emptyText =
+    [ (text "") ]
 
 
 token color s =
@@ -281,5 +294,14 @@ op s =
                 , ( "font-size", "0.8rem" )
                 ] ]
         [ text s ]
+
+
+wrapper color xs =
+    span
+        [ style [ ( "background-color", "rgb" ++ toString color )
+                , ( "display", "inline-block" )
+                , ( "margin", "2px" )
+                ] ]
+        xs
 
 
