@@ -5,23 +5,34 @@ import String
 import Combine exposing (..)
 import Combine.Char exposing (..)
 import Combine.Infix exposing (..)
+import Combine.Num exposing (int, float)
 import Regex
 
 
 -- Parser
 
 type E
-    = ETerm String
-    | EPhrase String
-    | EGroup (List E)
+    = ETerm String Fuzziness Boost
+    | EPhrase String Proximity Boost
+    | EGroup (List E) Boost
+    | ERegex String Boost
     | EPair (E, E)
     | EField String
-    | ERegex String
     | EAnd E E
     | EOr E E
     | ENot E
     | ERange Range
-    | EModifier Modifier
+
+
+type alias Fuzziness =
+    Maybe Int
+
+
+type alias Boost =
+    Maybe Float
+
+type alias Proximity =
+    Maybe Int
 
 
 type Range
@@ -37,12 +48,6 @@ type RangeOp
     | Gte
     | Lt
     | Lte
-
-
-type Modifier
-    = Fuzziness Int
-    | Proximity Int
-    | Boost Int
 
 
 parse : String -> Result String (List E)
@@ -135,6 +140,8 @@ term : Parser E
 term =
     ETerm
         <$> regex "[\\w\\d*?_-]+"
+        <*> fuzziness
+        <*> boost
         <?> "term"
 
 
@@ -143,6 +150,8 @@ phrase : Parser E
 phrase =
     EPhrase
         <$> quotes (regex "[\\ \\w\\d*?_-]+")
+        <*> proximity
+        <*> boost
         <?> "phrase"
 
 {-| (fox quick) -}
@@ -151,6 +160,7 @@ group =
     rec <| \() ->
         EGroup
             <$> parens (many1 expr)
+            <*> boost
             <?> "group"
 
 
@@ -233,6 +243,7 @@ regex' : Parser E
 regex' =
     ERegex
         <$> slashes (regex "[^\\/]+")
+        <*> boost
         <?> "regex"
 
 
@@ -353,13 +364,6 @@ rangeInf =
 
 
 {-|
-    quick^2 fox
-    "john smith"^2   (foo bar)^4
--}
-boost =
-    ""
-
-{-|
     quick brown +fox -news
 -}
 conciseBool =
@@ -399,13 +403,33 @@ op =
         orOp `or` andOp
 
 
-{-|
+
+{-| Fuzziness with default edit distance of 2
+
     quikc~ brwn~ foks~
     quikc~1
+-}
+fuzziness : Parser Fuzziness
+fuzziness =
+    maybe ((string "~") *> (int `or` (succeed 2)))
+
+
+{-|
     "fox quick"~5
 -}
+proximity : Parser Proximity
 proximity =
-    ""
+    maybe ((string "~") *> (int `or` (succeed 2)))
+
+
+{-|
+    quick^2 fox
+    "john smith"^2   (foo bar)^4
+-}
+boost : Parser Boost
+boost =
+    maybe ((string "^") *> (float `or` (toFloat <$> int)))
+
 
 {-|
     The reserved characters are: + - = && || > < ! ( ) { } [ ] ^ " ~ * ? : \ /
