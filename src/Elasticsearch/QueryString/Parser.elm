@@ -374,21 +374,21 @@ conciseBool =
 orOp : Parser (E -> E -> E)
 orOp =
     EOr
-        <$ string "OR"
+        <$ (string "OR" `or` string "||")
         <?> "or"
 
 
 andOp : Parser (E -> E -> E)
 andOp =
     EAnd
-        <$ string "AND"
+        <$ (string "AND" `or` string "&&")
         <?> "and"
 
 
 notOp : Parser (E -> E)
 notOp =
     ENot
-        <$ string "NOT"
+        <$ (string "NOT" `or` string "!")
         <?> "not"
 
 
