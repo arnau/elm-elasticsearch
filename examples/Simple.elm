@@ -69,6 +69,7 @@ model =
         , "quikc~ brwn~ foks~"
         , "quikc~1"
         , "\"fox quick\"~5"
+        , "/joh?n(ath[oa]n)/^8"
         ]
     }
 
@@ -163,8 +164,8 @@ expression depth e =
         EField s ->
             span [] [ text (s ++ ":") ]
 
-        ERegex s ->
-            token (255, 250, 150) ("/" ++ s ++ "/")
+        ERegex s b ->
+            regex s b
 
         EAnd a b ->
             group'
@@ -255,8 +256,14 @@ boostView x =
 phrase s p b =
     wrapper
         (150, 220, 100)
-        ((token (175, 250, 150) s)
+        ((token (175, 250, 150) ("\"" ++ s ++ "\""))
             :: (proximityToView p) ++ (boostToView b))
+
+regex s b =
+    wrapper
+        (255, 220, 120)
+        ((token (255, 250, 150) ("/" ++ s ++ "/"))
+            :: (boostToView b))
 
 
 proximityToView x =

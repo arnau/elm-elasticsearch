@@ -49,6 +49,9 @@ all =
         , describe "Group Modifier"
             [ test "Boost" <| \() -> parseGroupBoost
             ]
+        , describe "Regex Modifier"
+            [ test "Boost" <| \() -> parseRegexBoost
+            ]
         ]
 
 
@@ -114,7 +117,7 @@ parseFieldWithGroup =
 
 parseRegex : Expectation
 parseRegex =
-    Expect.equal (parse "/joh?n(ath[oa]n)/") (Ok [ ERegex "joh?n(ath[oa]n)" ])
+    Expect.equal (parse "/joh?n(ath[oa]n)/") (Ok [ ERegex "joh?n(ath[oa]n)" Nothing ])
 
 
 parseAnd : Expectation
@@ -170,7 +173,7 @@ parseNotRegex =
     Expect.equal
         (parse "NOT /foo?/")
         (Ok [ ENot
-                (ERegex "foo?")
+                (ERegex "foo?" Nothing)
             ])
 
 
@@ -370,3 +373,8 @@ parseGroupBoost =
             ])
 
 
+parseRegexBoost : Expectation
+parseRegexBoost =
+    Expect.equal
+        (parse "/joh?n(ath[oa]n)/^2")
+        (Ok [ ERegex "joh?n(ath[oa]n)" (Just 2) ])

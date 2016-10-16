@@ -15,9 +15,9 @@ type E
     = ETerm String Fuzziness Boost
     | EPhrase String Proximity Boost
     | EGroup (List E) Boost
+    | ERegex String Boost
     | EPair (E, E)
     | EField String
-    | ERegex String
     | EAnd E E
     | EOr E E
     | ENot E
@@ -243,6 +243,7 @@ regex' : Parser E
 regex' =
     ERegex
         <$> slashes (regex "[^\\/]+")
+        <*> boost
         <?> "regex"
 
 
