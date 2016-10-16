@@ -39,6 +39,7 @@ model =
     { content = "((quick AND is:fox) OR (/bro.?n/ AND \"fox trot\") OR date:[2016-10-15 TO 2016-10-20]) AND NOT news tag:{a TO s}"
     , showcase =
         [ "((quick AND fox) OR (brown AND fox) OR fox) AND NOT news"
+        , "quick brown +fox -news"
         , "fox"
         , "qu?ck bro*"
         , "\"fox quick\""
@@ -194,7 +195,17 @@ expression depth e =
         ENot e ->
             group'
                 depth
-                ((op "NOT") :: [ (expression (depth + 1) e) ])
+                ((op "NOT") :: [ expression (depth + 1) e ])
+
+        EMust e ->
+            group'
+                depth
+                ((op "+") :: [ expression (depth + 1) e ])
+
+        EMustNot e ->
+            group'
+                depth
+                ((op "-") :: [ expression (depth + 1) e ])
 
         ERange range ->
             let

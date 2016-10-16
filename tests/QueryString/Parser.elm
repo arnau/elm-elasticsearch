@@ -27,6 +27,12 @@ all =
         , test "Not phrase" <| \() -> parseNotPhrase
         , test "Not regex" <| \() -> parseNotRegex
         , test "Not group" <| \() -> parseNotGroup
+        , describe "Must"
+            [ test "Term" <| \() -> parseMustTerm
+            ]
+        , describe "Must Not"
+            [ test "Term" <| \() -> parseMustNotTerm
+            ]
         , describe "Range"
             [ test "Inclusive" <| \() -> parseInclusiveRange
             , test "Inclusive with field" <| \() -> parseInclusiveRangeWithField
@@ -378,3 +384,17 @@ parseRegexBoost =
     Expect.equal
         (parse "/joh?n(ath[oa]n)/^0.5")
         (Ok [ ERegex "joh?n(ath[oa]n)" (Just 0.5) ])
+
+
+parseMustTerm : Expectation
+parseMustTerm =
+    Expect.equal
+        (parse "+quick")
+        (Ok [ EMust (ETerm "quick" Nothing Nothing) ])
+
+
+parseMustNotTerm : Expectation
+parseMustNotTerm =
+    Expect.equal
+        (parse "-quick")
+        (Ok [ EMustNot (ETerm "quick" Nothing Nothing) ])
