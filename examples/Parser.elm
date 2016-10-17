@@ -135,11 +135,16 @@ asItem x =
 
 astView content =
     case QS.parse content of
-        Err error ->
-            p [] [ text error ]
+        Nothing ->
+            p [] [ text "Type above your query" ]
 
-        Ok ast ->
-            div [] (List.map (expression 1) ast)
+        Just res ->
+            case res of
+                Err error ->
+                    p [] [ text error ]
+
+                Ok ast ->
+                    div [] (List.map (expression 1) ast)
 
 
 

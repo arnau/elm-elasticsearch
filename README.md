@@ -11,7 +11,7 @@ version is [Elasticsearch
 
 ## Features
 
-* [ ] Query string parser (ref: https://www.elastic.co/guide/en/elasticsearch/reference/2.4/query-dsl-query-string-query.html#query-string-syntax)
+* [x] Query string parser (ref: https://www.elastic.co/guide/en/elasticsearch/reference/2.4/query-dsl-query-string-query.html#query-string-syntax)
   * [x] Field names (e.g. `status:active`)
   * [x] Wildcards (e.g. `qu?ck bro*`)
   * [x] Regular expressions (e.g. `/joh?n(ath[oa]n)/`)
@@ -22,7 +22,7 @@ version is [Elasticsearch
   * [x] Simple Boolean operators (e.g. `quick brown +fox -news`)
   * [x] Boolean operators (e.g. `((quick AND fox) OR (brown AND fox) OR fox) AND NOT news`)
   * [x] Grouping (e.g. `(quick OR brown) AND fox`)
-  * [ ] Empty query
+  * [x] Empty query
 * [ ] Simple query string parser (ref: https://www.elastic.co/guide/en/elasticsearch/reference/2.4/query-dsl-simple-query-string-query.html#_simple_query_string_syntax)
 * [ ] Search API (ref: https://www.elastic.co/guide/en/elasticsearch/reference/2.4/search.html)
 

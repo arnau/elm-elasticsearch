@@ -52,16 +52,21 @@ type RangeOp
     | Lte
 
 
-parse : String -> Result String (List E)
+parse : String -> Maybe (Result String (List E))
 parse s =
-    case Combine.parse program s of
-    -- case Combine.parse (expr <* end) s of
-        (Ok e, _) ->
-            Ok e
+    -- Don't bother parsing anything if the initial string is empty.
+    if String.isEmpty s then
+        Nothing
+    else
+        case Combine.parse program s of
+            (Ok e, _) ->
+                Just <| Ok e
 
-        (Err ms, cx) ->
-            Err ("parse error: " ++ (toString ms) ++ ", " ++ (toString cx))
-            -- Err <| formatError s ms cx
+            (Err ms, cx) ->
+                Just <|
+                    Err ("parse error: " ++ (toString ms) ++ ", "
+                        ++ (toString cx))
+                -- Err <| formatError s ms cx
 
 
 program : Parser (List E)
