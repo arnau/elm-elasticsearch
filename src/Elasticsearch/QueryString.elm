@@ -1,12 +1,6 @@
 module Elasticsearch.QueryString exposing (..)
 
 import Json.Encode as Encode
-import String
-import Combine exposing (..)
-import Combine.Char exposing (..)
-import Combine.Infix exposing (..)
-import Combine.Num exposing (int)
-import Regex
 
 
 type alias QueryString =
