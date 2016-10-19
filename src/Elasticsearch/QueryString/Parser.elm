@@ -1,5 +1,26 @@
 module Elasticsearch.QueryString.Parser exposing
-    (E(..), Range(..), RangeOp(..), parse)
+    ( E(..), Range(..), RangeOp(..)
+    , Fuzziness, Boost, Proximity
+    , parse
+    )
+
+{-| This module exposes the tools for converting an Elasticsearch query string
+into an AST.
+
+@docs parse
+
+# AST Types
+@docs E, Range, RangeOp
+
+
+## Modifiers
+
+Modifiers are specific for different types of expression. For example, a
+`ETerm` expects `Fuzziness` and `Boost` but `ERegex` only allows `Boost`.
+
+@docs Fuzziness, Boost, Proximity
+
+-}
 
 import String
 import Combine exposing (..)
@@ -9,8 +30,8 @@ import Combine.Num exposing (int, float)
 import Regex
 
 
--- Parser
-
+{-| The AST expressions.
+-}
 type E
     = ETerm String Fuzziness Boost
     | EPhrase String Proximity Boost
@@ -26,17 +47,26 @@ type E
     | ERange Range
 
 
+{-|
+-}
 type alias Fuzziness =
     Maybe Int
 
 
+{-|
+-}
 type alias Boost =
     Maybe Float
 
+
+{-|
+-}
 type alias Proximity =
     Maybe Int
 
 
+{-|
+-}
 type Range
     = Inclusive E E  -- [a TO b]
     | Exclusive E E  -- {a TO b}
@@ -45,6 +75,8 @@ type Range
     | SideUnbounded RangeOp E -- age:>10
 
 
+{-|
+-}
 type RangeOp
     = Gt
     | Gte
@@ -52,6 +84,12 @@ type RangeOp
     | Lte
 
 
+{-| Takes a string and returns the equivalent AST.
+
+If the string is empty it returns `Nothing` so you can handle the empty query
+case yourself.
+
+-}
 parse : String -> Maybe (Result String (List E))
 parse s =
     -- Don't bother parsing anything if the initial string is empty.

@@ -1,20 +1,39 @@
-module Elasticsearch.QueryString exposing (..)
+module Elasticsearch.QueryString exposing
+    (BoolOp, Param, Query, QueryString, encode)
+
+{-| An Elasticsearch query string encoder.
+
+@docs encode
+
+@docs BoolOp, Param, Query, QueryString
+
+-}
 
 import Json.Encode as Encode
 
 
+{-|
+-}
 type alias QueryString =
     { query : Query
     , params : List Param
     }
 
 
+{-|
+-}
 type BoolOp
     = AND
     | OR
 
+
+{-|
+-}
 type alias Query = String
 
+
+{-|
+-}
 type Param
     = Fields (List String)
     | DefaultField String -- _all
@@ -37,22 +56,21 @@ type Param
     | TimeZone String
 
 
-{-| Query String
+{-| Encodes a `QueryString` into JSON for Elasticsearch consumption.
 
 Source: https://www.elastic.co/guide/en/elasticsearch/reference/2.4/query-dsl-query-string-query.html#query-string-syntax
 
-A query that uses a query parser in order to parse its content.
 
-    encode { query = "this AND that OR thus"
+    encode { query = "(quick AND brown) fox"
            , params = [ DefaultField "content" ]
            }
 
-    {
-        "query_string" : {
-            "query" : "this AND that OR thus",
-            "default_field" : "content"
-        }
-    }
+    -- {
+    --     "query_string": {
+    --         "query": "(quick AND brown) fox",
+    --         "default_field": "content"
+    --     }
+    -- }
 
 -}
 encode : QueryString -> Encode.Value
