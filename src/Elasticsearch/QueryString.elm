@@ -32,7 +32,12 @@ type BoolOp
 type alias Query = String
 
 
-{-|
+{-| Allowed top level parameters for the `query_string` payload.
+
+Source: https://www.elastic.co/guide/en/elasticsearch/reference/2.4/query-dsl-query-string-query.html#query-dsl-query-string-query
+
+    QueryString.DefaultOperator QueryString.AND -- { "default_operator": "AND" }
+
 -}
 type Param
     = Fields (List String)
