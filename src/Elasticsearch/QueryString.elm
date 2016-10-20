@@ -1,5 +1,5 @@
 module Elasticsearch.QueryString exposing
-    (BoolOp, Param, Query, QueryString, encode)
+    (BoolOp(..), Param(..), Query, QueryString, encode)
 
 {-| An Elasticsearch query string encoder.
 
