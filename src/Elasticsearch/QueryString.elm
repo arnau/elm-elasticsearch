@@ -48,7 +48,7 @@ type Param
     | LowercaseExpandedTerms Bool -- True
     | EnablePositionIncrements Bool -- True
     | FuzzyMaxExpansions Int -- 50
-    -- TODO: | Fuzziness  AUTO | 0 | 1 | 2
+    | Fuzziness Int -- TODO: AUTO value
     | FuzzyPrefixLength Int -- 0
     | PhraseSlop Int -- 0
     | Boost Float -- 1.0
@@ -119,6 +119,9 @@ encodeParam param =
 
         FuzzyMaxExpansions value ->
             ( "fuzzy_max_expansions", Encode.int value )
+
+        Fuzziness value ->
+            ( "fuzziness", Encode.int value )
 
         FuzzyPrefixLength value ->
             ( "fuzzy_prefix_length", Encode.int value )
