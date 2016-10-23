@@ -26,7 +26,8 @@ version is [Elasticsearch
 * [ ] Simple query string parser (ref: https://www.elastic.co/guide/en/elasticsearch/reference/2.4/query-dsl-simple-query-string-query.html#_simple_query_string_syntax)
 * [ ] Search API (ref: https://www.elastic.co/guide/en/elasticsearch/reference/2.4/search.html)
   * [x] Count API
-  * [ ] Search API
+  * [x] Search API
+  * [ ] Request Body Search
   * [ ] Validate API
   * [ ] Explain API
 
