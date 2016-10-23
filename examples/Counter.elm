@@ -65,7 +65,7 @@ update msg model =
 
         Submit ->
             ( model
-            , count' model.endpoint model.query
+            , get model.endpoint model.query
             )
 
         FetchSuccess { count } ->
@@ -83,8 +83,8 @@ withDefault default query =
         query
 
 
-count' : String -> String -> Cmd Msg
-count' url query =
+get : String -> String -> Cmd Msg
+get url query =
     Count.fetch url [ Count.Query (withDefault "*" query) ]
         |> Task.perform FetchFailure FetchSuccess
 

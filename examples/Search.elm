@@ -87,7 +87,7 @@ update msg model =
 
         Submit ->
             ( model
-            , count' model.endpoint model.query
+            , get model.endpoint model.query
             )
 
         FetchSuccess res ->
@@ -110,8 +110,8 @@ withDefault default query =
         query
 
 
-count' : String -> String -> Cmd Msg
-count' url query =
+get : String -> String -> Cmd Msg
+get url query =
     Search.fetch url [ Search.Query (withDefault "*" query) ] tweetDecode
         |> Task.perform FetchFailure FetchSuccess
 

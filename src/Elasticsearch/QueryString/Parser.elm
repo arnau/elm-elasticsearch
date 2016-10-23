@@ -135,15 +135,15 @@ parsers =
         choice [ pair, range, group, atom ]
 
 
-parsers' : Parser E
-parsers' =
-     (ws <| notOp) `or` (mustOp `or` mustNotOp) <*> parsers
+parsers_ : Parser E
+parsers_ =
+     (ws <| notOp) <|> (mustOp <|> mustNotOp) <*> parsers
 
 
 expr : Parser E
 expr =
     rec <| \() ->
-        (ws <| choice [ parsers', parsers ]) `chainl` op
+        chainl (ws <| choice [ parsers_, parsers ]) op
 
 
 {- XXX: https://github.com/Bogdanp/elm-combine/issues/14
@@ -233,7 +233,7 @@ pair : Parser E
 pair =
     rec <| \() ->
         EPair
-            <$> ((,) `map` field `andMap` subexpr)
+            <$> (map (,) field <*> subexpr)
             <?> "pair"
 
 
@@ -313,9 +313,11 @@ range =
 inclusiveRange : Parser Range
 inclusiveRange =
     rec <| \() ->
-        brackets
-            <| Inclusive `map` rangeLowerBound `andMap` rangeUpperBound
-            <?> "[to]"
+        brackets <|
+            Inclusive
+                <$> rangeLowerBound
+                <*> rangeUpperBound
+                <?> "[to]"
 
 
 {-| Exclusive range
@@ -325,9 +327,11 @@ inclusiveRange =
 exclusiveRange : Parser Range
 exclusiveRange =
     rec <| \() ->
-        braces
-            <| Exclusive `map` rangeLowerBound `andMap` rangeUpperBound
-            <?> "{to}"
+        braces <|
+            Exclusive
+                <$> rangeLowerBound
+                <*> rangeUpperBound
+                <?> "{to}"
 
 
 {-| Left inclusive range
@@ -337,9 +341,11 @@ exclusiveRange =
 lInclusiveRange : Parser Range
 lInclusiveRange =
     rec <| \() ->
-        (between lbracket rbrace)
-            <| LInclusive `map` rangeLowerBound `andMap` rangeUpperBound
-            <?> "[to}"
+        (between lbracket rbrace) <|
+            LInclusive
+                <$> rangeLowerBound
+                <*> rangeUpperBound
+                <?> "[to}"
 
 
 {-| Right inclusive range
@@ -349,9 +355,11 @@ lInclusiveRange =
 rInclusiveRange : Parser Range
 rInclusiveRange =
     rec <| \() ->
-        (between lbrace rbracket)
-            <| RInclusive `map` rangeLowerBound `andMap` rangeUpperBound
-            <?> "{to]"
+        (between lbrace rbracket) <|
+            RInclusive
+                <$> rangeLowerBound
+                <*> rangeUpperBound
+                <?> "{to]"
 
 
 {-| Side unbounded range
@@ -366,8 +374,10 @@ rInclusiveRange =
 sideUnboundedRange : Parser Range
 sideUnboundedRange =
     rec <| \() ->
-        SideUnbounded `map` rangeOp `andMap` term
-        <?> ">=<"
+        SideUnbounded
+            <$> rangeOp
+            <*> term
+            <?> ">=<"
 
 
 rangeOp : Parser RangeOp
@@ -408,32 +418,24 @@ rangeInf =
     ws <| string "TO"
 
 
-{-|
-    quick brown +fox -news
--}
-conciseBool =
-    ""
-
-
-
 orOp : Parser (E -> E -> E)
 orOp =
     EOr
-        <$ (string "OR" `or` string "||")
+        <$ (string "OR" <|> string "||")
         <?> "or"
 
 
 andOp : Parser (E -> E -> E)
 andOp =
     EAnd
-        <$ (string "AND" `or` string "&&")
+        <$ (string "AND" <|> string "&&")
         <?> "and"
 
 
 notOp : Parser (E -> E)
 notOp =
     ENot
-        <$ (string "NOT" `or` string "!")
+        <$ (string "NOT" <|> string "!")
         <?> "not"
 
 
@@ -459,7 +461,7 @@ mustNotOp =
 op : Parser (E -> E -> E)
 op =
     rec <| \() ->
-        orOp `or` andOp
+        orOp <|> andOp
 
 
 
@@ -470,7 +472,7 @@ op =
 -}
 fuzziness : Parser Fuzziness
 fuzziness =
-    maybe ((string "~") *> (int `or` (succeed 2)))
+    maybe <| (string "~") *> (int <|> (succeed 2))
 
 
 {-|
@@ -478,7 +480,7 @@ fuzziness =
 -}
 proximity : Parser Proximity
 proximity =
-    maybe ((string "~") *> (int `or` (succeed 2)))
+    maybe <| (string "~") *> (int <|> (succeed 2))
 
 
 {-|
@@ -487,7 +489,7 @@ proximity =
 -}
 boost : Parser Boost
 boost =
-    maybe ((string "^") *> (float `or` (toFloat <$> int)))
+    maybe <| (string "^") *> (float <|> (toFloat <$> int))
 
 
 {-|
