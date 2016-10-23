@@ -7,6 +7,7 @@ import String
 import QueryString
 import QueryString.Parser
 import Count
+import Search
 
 all : Test
 all =
@@ -14,4 +15,5 @@ all =
         [ QueryString.all
         , QueryString.Parser.all
         , Count.all
+        , Search.all
         ]
