@@ -9,7 +9,8 @@
     "exposed-modules": [
         "Elasticsearch.Count",
         "Elasticsearch.QueryString",
-        "Elasticsearch.QueryString.Parser"
+        "Elasticsearch.QueryString.Parser",
+        "Elasticsearch.Search"
     ],
     "dependencies": {
         "Bogdanp/elm-combine": "2.2.1 <= v < 3.0.0",
