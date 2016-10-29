@@ -1,6 +1,6 @@
 # Elm Elasticsearch
 
-**WARNING**: Exploratory face.
+**WARNING**: Exploratory phase.
 
 
 This is a library for interacting with
