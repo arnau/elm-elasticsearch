@@ -10,6 +10,7 @@ import Json.Decode as Decode exposing
     , succeed
     )
 import Json.Decode.Extra exposing ((|:))
+import Dict exposing (Dict)
 
 
 {-| Aggregation name -}
@@ -20,42 +21,83 @@ type alias Field = String
 type alias Missing a = Maybe a
 
 
-{-|
+{-| Aggregation types
 
-TODO: script option
+TODO: consider moving it to Aggregation.elm
 
-    {
-        "avg_grade": {
-            "value": 75
-        }
-    }
 -}
 type Aggregation
-    = Avg Name Float
+    = Basic Name Float -- Avg, Cardinality, Max, Min
+    | Extended Name ExtendedStats
+    | Geo Name Bounds
+    | GeoCentroid Name Field Coord
+    | Percentile Name PercentileStats
+    | Stats Name BasicStats
+
+
+type alias BasicStats =
+    { count : Int
+    , min : Float
+    , max : Float
+    , avg : Float
+    , sum : Float
+    }
+
+
+type alias ExtendedStats =
+    { count : Int
+    , min : Float
+    , max : Float
+    , avg : Float
+    , sum : Float
+    , sumOfSquares : Float
+    , variance : Float
+    , stdDeviation : Float
+    , stdDeviationBounds :
+        { upper : Float
+        , lower : Float
+        }
+    }
+
+
+type alias PercentileStats =
+    Dict String Float
+
+
+type alias Bounds =
+    { topLeft : Coord
+    , bottomRight : Coord
+    }
+
+
+type alias Coord =
+    { lat : Float
+    , lon : Float
+    }
 
 
 aggregation : Name -> Decoder Aggregation
 aggregation name =
     Decode.oneOf
-        [ avg name
+        [ basic name
         ]
 
 
 {-| Average decoder expects a specific name to get the right value.
 -}
-avg : Name -> Decoder Aggregation
-avg name =
-    succeed (Avg name)
+basic : Name -> Decoder Aggregation
+basic name =
+    succeed (Basic name)
         |: (Decode.at [name, "value"] float)
 
 
 {-| Multiple average aggregations.  **Unstable**
 -}
-avgs : Decoder (List Aggregation)
-avgs =
-    Decode.map toAvg (keyValuePairs ("value" := float))
+aggs : Decoder (List Aggregation)
+aggs =
+    Decode.map toBasic (keyValuePairs ("value" := float))
 
 
-toAvg : List (Name, Float) -> List Aggregation
-toAvg xs =
-    List.map (\(k, v) -> Avg k v) xs
+toBasic : List (Name, Float) -> List Aggregation
+toBasic xs =
+    List.map (\(k, v) -> Basic k v) xs
