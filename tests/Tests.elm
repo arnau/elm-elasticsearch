@@ -8,6 +8,7 @@ import QueryString
 import QueryString.Parser
 import Count
 import Search
+import Aggregation
 
 all : Test
 all =
@@ -16,4 +17,5 @@ all =
         , QueryString.Parser.all
         , Count.all
         , Search.all
+        , Aggregation.all
         ]
