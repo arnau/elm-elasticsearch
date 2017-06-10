@@ -1,23 +1,22 @@
 module Counter exposing (..)
 
-import Html exposing (..)
-import Html.App as App
-import Html.Attributes exposing (..)
-import Html.Events exposing (onInput, onClick)
-import Http
-import Json.Decode as Decode exposing (Decoder)
-import String
-import Task
 import Elasticsearch.Count as Count exposing (Count)
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Html.Events exposing (onClick, onInput)
+import Http
+import String
 
 
+main : Program Never Model Msg
 main =
-    App.program
+    Html.program
         { init = model ! []
         , view = view
         , update = update
         , subscriptions = \_ -> Sub.none
         }
+
 
 
 -- MODEL
@@ -36,11 +35,14 @@ type Hits
     | Failure String
 
 
+model : Model
 model =
     { endpoint = "http://localhost:9292"
     , query = ""
     , hits = Await
     }
+
+
 
 -- UPDATE
 
@@ -49,8 +51,7 @@ type Msg
     = NoOp
     | Add String
     | Submit
-    | FetchSuccess Count
-    | FetchFailure Http.Error
+    | Fetch (Result Http.Error Count)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -68,11 +69,13 @@ update msg model =
             , get model.endpoint model.query
             )
 
-        FetchSuccess { count } ->
-            { model | hits = Success count } ! []
+        Fetch result ->
+            case result of
+                Ok { count } ->
+                    { model | hits = Success count } ! []
 
-        FetchFailure error ->
-            { model | hits = Failure (toString error) } ! []
+                Err error ->
+                    { model | hits = Failure (toString error) } ! []
 
 
 withDefault : String -> String -> String
@@ -86,13 +89,14 @@ withDefault default query =
 get : String -> String -> Cmd Msg
 get url query =
     Count.fetch url [ Count.Query (withDefault "*" query) ]
-        |> Task.perform FetchFailure FetchSuccess
+        |> Http.send Fetch
+
 
 
 -- VIEW
 
 
--- view : Model -> Html Msg
+view : Model -> Html Msg
 view model =
     div
         []
@@ -101,12 +105,13 @@ view model =
             [ input
                 [ onInput Add, value model.query ]
                 []
-            , button [ onClick Submit, type' "submit" ] [ text "Count" ]
+            , button [ onClick Submit, type_ "submit" ] [ text "Count" ]
             ]
         , p [] [ text <| hitsToString model.hits ]
         ]
 
 
+hitsToString : Hits -> String
 hitsToString hits =
     case hits of
         Await ->

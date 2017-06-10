@@ -1,18 +1,17 @@
-module Count exposing (all)
-
-import Test exposing (..)
-import Expect exposing (Expectation)
-
-import Json.Decode exposing (decodeString)
+module Count exposing (suite)
 
 import Elasticsearch.Count as Count exposing (Count)
+import Expect exposing (Expectation)
+import Json.Decode exposing (decodeString)
+import Test exposing (..)
 
 
-all : Test
-all =
-    describe "Count"
+suite : Test
+suite =
+    describe "Count suite"
         [ test "Decode count" <| \() -> decodeCount
         ]
+
 
 count : Count
 count =

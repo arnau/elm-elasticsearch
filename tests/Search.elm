@@ -1,30 +1,31 @@
-module Search exposing (all)
+module Search exposing (suite)
 
-import Test exposing (..)
-import Expect exposing (Expectation)
-
-import Json.Decode as Decode exposing
-    ( (:=)
-    , Decoder
-    , int
-    , float
-    , list
-    , maybe
-    , string
-    , succeed
-    , decodeString
-    )
-import Json.Decode.Extra exposing ((|:))
 import Elasticsearch.Search as Search
+import Expect exposing (Expectation)
+import Json.Decode as Decode
+    exposing
+        ( Decoder
+        , decodeString
+        , field
+        , float
+        , int
+        , list
+        , maybe
+        , string
+        , succeed
+        )
+import Json.Decode.Extra exposing ((|:))
+import Test exposing (..)
 
 
-all : Test
-all =
-    describe "Search"
+suite : Test
+suite =
+    describe "Search suite"
         [ test "Decode source" <| \() -> decodeTweet
         , test "Decode search" <| \() -> decodeSearch
         , test "Extract results" <| \() -> extractResults
         ]
+
 
 
 -- Fixtures
@@ -36,12 +37,14 @@ type alias Tweet =
     , message : String
     }
 
+
 tweetDecoder : Decoder Tweet
 tweetDecoder =
     succeed Tweet
-        |: ("user" := string)
-        |: ("postDate" := string)
-        |: ("message" := string)
+        |: field "user" string
+        |: field "postDate" string
+        |: field "message" string
+
 
 tweet =
     { user = "kimchy"
@@ -49,19 +52,22 @@ tweet =
     , message = "trying out Elasticsearch"
     }
 
+
 hit =
     { index = "twitter"
-    , type' = "tweet"
+    , type_ = "tweet"
     , id = "1"
     , score = Nothing
     , source = tweet
     }
 
+
 hits =
     { total = 1
-    , hits = [hit]
+    , hits = [ hit ]
     , maxScore = Nothing
     }
+
 
 search =
     { shards =
@@ -101,6 +107,7 @@ rawTweets =
     """
 
 
+
 -- Tests
 
 
@@ -119,12 +126,13 @@ decodeSearch =
 extractResults : Expectation
 extractResults =
     let
-        res = decodeString (Search.decode tweetDecoder) rawTweets
+        res =
+            decodeString (Search.decode tweetDecoder) rawTweets
     in
-        case res of
-            Err e ->
-                Expect.fail e
+    case res of
+        Err e ->
+            Expect.fail e
 
-            Ok x ->
-                List.map .source x.hits.hits
-                    |> Expect.equal [tweet]
+        Ok x ->
+            List.map .source x.hits.hits
+                |> Expect.equal [ tweet ]

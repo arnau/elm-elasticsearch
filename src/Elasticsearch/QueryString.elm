@@ -1,5 +1,4 @@
-module Elasticsearch.QueryString exposing
-    (BoolOp(..), Param(..), Query, QueryString, encode)
+module Elasticsearch.QueryString exposing (BoolOp(..), Param(..), Query, QueryString, encode)
 
 {-| An Elasticsearch query string encoder.
 
@@ -12,29 +11,27 @@ module Elasticsearch.QueryString exposing
 import Json.Encode as Encode
 
 
-{-|
--}
+{-| -}
 type alias QueryString =
     { query : Query
     , params : List Param
     }
 
 
-{-|
--}
+{-| -}
 type BoolOp
     = AND
     | OR
 
 
-{-|
--}
-type alias Query = String
+{-| -}
+type alias Query =
+    String
 
 
 {-| Allowed top level parameters for the `query_string` payload.
 
-Source: https://www.elastic.co/guide/en/elasticsearch/reference/2.4/query-dsl-query-string-query.html#query-dsl-query-string-query
+Source: <https://www.elastic.co/guide/en/elasticsearch/reference/2.4/query-dsl-query-string-query.html#query-dsl-query-string-query>
 
     QueryString.DefaultOperator QueryString.AND -- { "default_operator": "AND" }
 
@@ -55,7 +52,7 @@ type Param
     | AnalyzeWildcard Bool -- False
     | AutoGeneratePhraseQueries Bool -- False
     | MaxDeterminizedStates Int -- 10000
-    -- TODO: | MinimumShouldMatch Int | -Int | %
+      -- TODO: | MinimumShouldMatch Int | -Int | %
     | Lenient Bool -- False
     | Locale String -- ROOT
     | TimeZone String
@@ -63,8 +60,7 @@ type Param
 
 {-| Encodes a `QueryString` into JSON for Elasticsearch consumption.
 
-Source: https://www.elastic.co/guide/en/elasticsearch/reference/2.4/query-dsl-query-string-query.html#query-string-syntax
-
+Source: <https://www.elastic.co/guide/en/elasticsearch/reference/2.4/query-dsl-query-string-query.html#query-string-syntax>
 
     encode { query = "(quick AND brown) fox"
            , params = [ DefaultField "content" ]
@@ -82,7 +78,7 @@ encode : QueryString -> Encode.Value
 encode { query, params } =
     Encode.object
         [ ( "query_string"
-          , Encode.object (encodeQuery query :: (List.map encodeParam params))
+          , Encode.object (encodeQuery query :: List.map encodeParam params)
           )
         ]
 
@@ -97,8 +93,8 @@ encodeParam param =
     case param of
         Fields value ->
             ( "fields", Encode.list (List.map Encode.string value) )
-        -- TODO: use_dis_max.  MultiField has to be modeled differently
 
+        -- TODO: use_dis_max.  MultiField has to be modeled differently
         DefaultField value ->
             ( "default_field", Encode.string value )
 

@@ -21,6 +21,7 @@ Docker installed you can use `make run` to get Elasticsearch on 9292.
 Then run the example:
 
 ```sh
+make load # adds one tweet
 elm reactor
 open http://localhost:8000/Counter.elm
 ```

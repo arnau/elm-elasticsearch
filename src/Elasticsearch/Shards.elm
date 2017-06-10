@@ -1,11 +1,12 @@
 module Elasticsearch.Shards exposing (Shards, decode)
 
-import Json.Decode as Decode exposing
-    ( (:=)
-    , Decoder
-    , int
-    , succeed
-    )
+import Json.Decode as Decode
+    exposing
+        ( Decoder
+        , field
+        , int
+        , succeed
+        )
 import Json.Decode.Extra exposing ((|:))
 
 
@@ -15,9 +16,10 @@ type alias Shards =
     , failed : Int
     }
 
+
 decode : Decoder Shards
 decode =
     succeed Shards
-        |: ("total" := int)
-        |: ("successful" := int)
-        |: ("failed" := int)
+        |: field "total" int
+        |: field "successful" int
+        |: field "failed" int

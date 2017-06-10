@@ -1,31 +1,30 @@
 module Search exposing (..)
 
-import Html exposing (..)
-import Html.App as App
-import Html.Attributes exposing (..)
-import Html.Events exposing (onInput, onClick)
-import Http
-import Json.Decode as Decode exposing (Decoder)
-import String
-import Task
-import Json.Decode as Decode exposing
-    ( (:=)
-    , Decoder
-    , string
-    , succeed
-    )
-import Json.Decode.Extra exposing ((|:))
-
 import Elasticsearch.Search as Search exposing (Search)
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Html.Events exposing (onClick, onInput)
+import Http
+import Json.Decode as Decode
+    exposing
+        ( Decoder
+        , field
+        , string
+        , succeed
+        )
+import Json.Decode.Extra exposing ((|:))
+import String
 
 
+main : Program Never Model Msg
 main =
-    App.program
+    Html.program
         { init = model ! []
         , view = view
         , update = update
         , subscriptions = \_ -> Sub.none
         }
+
 
 
 -- MODEL
@@ -43,25 +42,29 @@ type Hits
     | Success (List Tweet)
     | Failure String
 
+
 type alias Tweet =
     { user : String
     , postDate : String
     , message : String
     }
 
+
 tweetDecode : Decoder Tweet
 tweetDecode =
     succeed Tweet
-        |: ("user" := string)
-        |: ("postDate" := string)
-        |: ("message" := string)
+        |: field "user" string
+        |: field "postDate" string
+        |: field "message" string
 
 
+model : Model
 model =
     { endpoint = "http://localhost:9292"
     , query = ""
     , hits = Await
     }
+
 
 
 -- UPDATE
@@ -71,8 +74,7 @@ type Msg
     = NoOp
     | Add String
     | Submit
-    | FetchSuccess (Search Tweet)
-    | FetchFailure Http.Error
+    | Fetch (Result Http.Error (Search Tweet))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -90,11 +92,13 @@ update msg model =
             , get model.endpoint model.query
             )
 
-        FetchSuccess res ->
-            { model | hits = Success (fromSearch res) } ! []
+        Fetch result ->
+            case result of
+                Ok value ->
+                    { model | hits = Success (fromSearch value) } ! []
 
-        FetchFailure error ->
-            { model | hits = Failure (toString error) } ! []
+                Err error ->
+                    { model | hits = Failure (toString error) } ! []
 
 
 fromSearch : Search a -> List a
@@ -113,13 +117,14 @@ withDefault default query =
 get : String -> String -> Cmd Msg
 get url query =
     Search.fetch url [ Search.Query (withDefault "*" query) ] tweetDecode
-        |> Task.perform FetchFailure FetchSuccess
+        |> Http.send Fetch
+
 
 
 -- VIEW
 
 
--- view : Model -> Html Msg
+view : Model -> Html Msg
 view model =
     div
         []
@@ -128,12 +133,13 @@ view model =
             [ input
                 [ onInput Add, value model.query ]
                 []
-            , button [ onClick Submit, type' "submit" ] [ text "Search" ]
+            , button [ onClick Submit, type_ "submit" ] [ text "Search" ]
             ]
         , p [] [ text <| hitsToString model.hits ]
         ]
 
 
+hitsToString : Hits -> String
 hitsToString hits =
     case hits of
         Await ->

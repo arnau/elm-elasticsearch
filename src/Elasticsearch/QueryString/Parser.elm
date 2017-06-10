@@ -1,15 +1,22 @@
-module Elasticsearch.QueryString.Parser exposing
-    ( E(..), Range(..), RangeOp(..)
-    , Fuzziness, Boost, Proximity
-    , parse
-    )
+module Elasticsearch.QueryString.Parser
+    exposing
+        ( Boost
+        , E(..)
+        , Fuzziness
+        , Proximity
+        , Range(..)
+        , RangeOp(..)
+        , parse
+        )
 
 {-| This module exposes the tools for converting an Elasticsearch query string
 into an AST.
 
 @docs parse
 
+
 # AST Types
+
 @docs E, Range, RangeOp
 
 
@@ -22,12 +29,10 @@ Modifiers are specific for different types of expression. For example, a
 
 -}
 
-import String
 import Combine exposing (..)
-import Combine.Char exposing (..)
-import Combine.Infix exposing (..)
-import Combine.Num exposing (int, float)
+import Combine.Num exposing (float, int)
 import Regex
+import String
 
 
 {-| The AST expressions.
@@ -37,7 +42,7 @@ type E
     | EPhrase String Proximity Boost
     | EGroup (List E) Boost
     | ERegex String Boost
-    | EPair (E, E)
+    | EPair ( E, E )
     | EField String
     | EAnd E E
     | EOr E E
@@ -47,36 +52,31 @@ type E
     | ERange Range
 
 
-{-|
--}
+{-| -}
 type alias Fuzziness =
     Maybe Int
 
 
-{-|
--}
+{-| -}
 type alias Boost =
     Maybe Float
 
 
-{-|
--}
+{-| -}
 type alias Proximity =
     Maybe Int
 
 
-{-|
--}
+{-| -}
 type Range
-    = Inclusive E E  -- [a TO b]
-    | Exclusive E E  -- {a TO b}
+    = Inclusive E E -- [a TO b]
+    | Exclusive E E -- {a TO b}
     | LInclusive E E -- [a TO b}
     | RInclusive E E -- {a TO b]
     | SideUnbounded RangeOp E -- age:>10
 
 
-{-|
--}
+{-| -}
 type RangeOp
     = Gt
     | Gte
@@ -97,91 +97,79 @@ parse s =
         Nothing
     else
         case Combine.parse program s of
-            (Ok e, _) ->
-                Just <| Ok e
+            Ok ( _, _, result ) ->
+                Just <| Ok result
 
-            (Err ms, cx) ->
+            Err ( _, stream, ms ) ->
                 Just <|
-                    Err ("parse error: " ++ (toString ms) ++ ", "
-                        ++ (toString cx))
-                -- Err <| formatError s ms cx
+                    Err ("parse error: " ++ toString ms ++ ", " ++ toString stream)
 
 
-program : Parser (List E)
+program : Parser s (List E)
 program =
-    let
-        all acc cx =
-            if String.isEmpty cx.input then
-                (Ok (List.reverse acc), cx)
-            else
-                case app expr cx of
-                    (Ok res', cx') ->
-                        all (res' :: acc) cx'
-
-                    (Err ms, cx') ->
-                        (Err ms, cx')
-    in
-        primitive <| all []
+    manyTill expr end
 
 
-atom : Parser E
+atom : Parser s E
 atom =
-    choice [ regex', phrase, term ]
+    choice [ regexP, phrase, term ]
 
 
-parsers : Parser E
+parsers : Parser s E
 parsers =
-    rec <| \() ->
-        choice [ pair, range, group, atom ]
+    lazy <|
+        \() ->
+            choice [ pair, range, group, atom ]
 
 
-parsers_ : Parser E
+parsers_ : Parser s E
 parsers_ =
-     (ws <| notOp) <|> (mustOp <|> mustNotOp) <*> parsers
+    notOp
+        |> or mustOp
+        |> or mustNotOp
+        |> andMap parsers
 
 
-expr : Parser E
+expr : Parser s E
 expr =
-    rec <| \() ->
-        chainl (ws <| choice [ parsers_, parsers ]) op
+    lazy <|
+        \() ->
+            chainl op (ws <| choice [ parsers_, parsers ])
 
 
-{- XXX: https://github.com/Bogdanp/elm-combine/issues/14
--}
-subexpr : Parser E
+
+{- XXX: https://github.com/Bogdanp/elm-combine/issues/14 -}
+
+
+subexpr : Parser s E
 subexpr =
-    rec <| \() ->
-        choice [ range, group, atom ]
+    lazy <|
+        \() ->
+            choice [ range, group, atom ]
 
 
-whitespace : Parser String
-whitespace =
-    regex "[ \t\r\n]*" <?> "whitespace"
+ws : Parser s a -> Parser s a
+ws e =
+    whitespace *> e <* whitespace
 
 
-ws : Parser res -> Parser res
-ws =
-    between whitespace whitespace
-
-
-quote : Parser String
+quote : Parser s String
 quote =
     string "\""
 
 
-quotes : Parser a -> Parser a
+quotes : Parser s a -> Parser s a
 quotes e =
     quote *> e <* quote
 
 
-{-|
-
-Wildcards are included as part of Term for the time being.
+{-| Wildcards are included as part of Term for the time being.
 
     fox
     qu?ck bro*
+
 -}
-term : Parser E
+term : Parser s E
 term =
     ETerm
         <$> regex "[\\w\\d*?][\\w\\d*?_-]*"
@@ -190,8 +178,9 @@ term =
         <?> "term"
 
 
-{-| "fox quick" -}
-phrase : Parser E
+{-| "fox quick"
+-}
+phrase : Parser s E
 phrase =
     EPhrase
         <$> quotes (regex "[\\ \\w\\d*?_-]+")
@@ -199,167 +188,191 @@ phrase =
         <*> boost
         <?> "phrase"
 
-{-| (fox quick) -}
-group : Parser E
+
+{-| (fox quick)
+-}
+group : Parser s E
 group =
-    rec <| \() ->
-        EGroup
-            <$> parens (many1 expr)
-            <*> boost
-            <?> "group"
+    lazy <|
+        \() ->
+            EGroup
+                <$> parens (many1 expr)
+                <*> boost
+                <?> "group"
 
 
-fieldSep : Parser String
+fieldSep : Parser s String
 fieldSep =
     string ":"
 
 
 {-|
+
     status:active
     title:(quick OR brown)
     title:(quick brown)
     author:"John Smith"
     book.\*:(quick brown)
     field1:foo
+
 -}
-field : Parser E
+field : Parser s E
 field =
     EField
-        <$> regex "[\\w_][\\w\\d_]*(\\\\.\\*)?" <* fieldSep
+        <$> regex "[\\w_][\\w\\d_]*(\\\\.\\*)?"
+        <* fieldSep
         <?> "field"
 
 
-pair : Parser E
+pair : Parser s E
 pair =
-    rec <| \() ->
-        EPair
-            <$> (map (,) field <*> subexpr)
-            <?> "pair"
+    lazy <|
+        \() ->
+            EPair
+                <$> (map (,) field <*> subexpr)
+                <?> "pair"
 
 
 {-|
+
     _missing_:title
+
 -}
+missing : Parser s String
 missing =
     string "_missing_"
 
+
 {-|
+
     _exists_:title
+
 -}
+exists : Parser s String
 exists =
     string "_exists_"
 
 
-slash : Parser String
+slash : Parser s String
 slash =
     string "/"
 
 
-slashes : Parser a -> Parser a
+slashes : Parser s a -> Parser s a
 slashes e =
     slash *> e <* slash
 
 
-lbrace : Parser String
+lbrace : Parser s String
 lbrace =
     string "{"
 
 
-rbrace : Parser String
+rbrace : Parser s String
 rbrace =
     string "}"
 
 
-lbracket : Parser String
+lbracket : Parser s String
 lbracket =
     string "["
 
 
-rbracket : Parser String
+rbracket : Parser s String
 rbracket =
     string "]"
 
 
-
 {-|
+
     name:/joh?n(ath[oa]n)/
+
 -}
-regex' : Parser E
-regex' =
+regexP : Parser s E
+regexP =
     ERegex
         <$> slashes (regex "[^\\/]+")
         <*> boost
         <?> "regex"
 
 
+range : Parser s E
 range =
-    rec <| \() ->
-        ERange
-            <$> (choice
-                    [ inclusiveRange
-                    , exclusiveRange
-                    , lInclusiveRange
-                    , rInclusiveRange
-                    , sideUnboundedRange
-                    ]
-                )
+    lazy <|
+        \() ->
+            ERange
+                <$> choice
+                        [ inclusiveRange
+                        , exclusiveRange
+                        , lInclusiveRange
+                        , rInclusiveRange
+                        , sideUnboundedRange
+                        ]
 
 
 {-| Inclusive range
 
     date:[2012-01-01 TO 2012-12-31]
     count:[1 TO 5]
+
 -}
-inclusiveRange : Parser Range
+inclusiveRange : Parser s Range
 inclusiveRange =
-    rec <| \() ->
-        brackets <|
-            Inclusive
-                <$> rangeLowerBound
-                <*> rangeUpperBound
-                <?> "[to]"
+    lazy <|
+        \() ->
+            brackets <|
+                Inclusive
+                    <$> rangeLowerBound
+                    <*> rangeUpperBound
+                    <?> "[to]"
 
 
 {-| Exclusive range
 
     {1 TO 5}
+
 -}
-exclusiveRange : Parser Range
+exclusiveRange : Parser s Range
 exclusiveRange =
-    rec <| \() ->
-        braces <|
-            Exclusive
-                <$> rangeLowerBound
-                <*> rangeUpperBound
-                <?> "{to}"
+    lazy <|
+        \() ->
+            braces <|
+                Exclusive
+                    <$> rangeLowerBound
+                    <*> rangeUpperBound
+                    <?> "{to}"
 
 
 {-| Left inclusive range
 
     [1 TO 5}
+
 -}
-lInclusiveRange : Parser Range
+lInclusiveRange : Parser s Range
 lInclusiveRange =
-    rec <| \() ->
-        (between lbracket rbrace) <|
-            LInclusive
-                <$> rangeLowerBound
-                <*> rangeUpperBound
-                <?> "[to}"
+    lazy <|
+        \() ->
+            between lbracket rbrace <|
+                LInclusive
+                    <$> rangeLowerBound
+                    <*> rangeUpperBound
+                    <?> "[to}"
 
 
 {-| Right inclusive range
 
     {1 TO 5]
+
 -}
-rInclusiveRange : Parser Range
+rInclusiveRange : Parser s Range
 rInclusiveRange =
-    rec <| \() ->
-        (between lbrace rbracket) <|
-            RInclusive
-                <$> rangeLowerBound
-                <*> rangeUpperBound
-                <?> "{to]"
+    lazy <|
+        \() ->
+            between lbrace rbracket <|
+                RInclusive
+                    <$> rangeLowerBound
+                    <*> rangeUpperBound
+                    <?> "{to]"
 
 
 {-| Side unbounded range
@@ -370,86 +383,91 @@ rInclusiveRange =
     age:<=10
     age:(>=10 AND <20)
     age:(+>=10 +<20)
+
 -}
-sideUnboundedRange : Parser Range
+sideUnboundedRange : Parser s Range
 sideUnboundedRange =
-    rec <| \() ->
-        SideUnbounded
-            <$> rangeOp
-            <*> term
-            <?> ">=<"
+    lazy <|
+        \() ->
+            SideUnbounded
+                <$> rangeOp
+                <*> term
+                <?> ">=<"
 
 
-rangeOp : Parser RangeOp
+rangeOp : Parser s RangeOp
 rangeOp =
     choice [ gteOp, gtOp, lteOp, ltOp ]
 
 
-gtOp : Parser RangeOp
+gtOp : Parser s RangeOp
 gtOp =
     Gt <$ string ">"
 
 
-gteOp : Parser RangeOp
+gteOp : Parser s RangeOp
 gteOp =
     Gte <$ string ">="
 
 
-ltOp : Parser RangeOp
+ltOp : Parser s RangeOp
 ltOp =
     Lt <$ string "<"
 
 
-lteOp : Parser RangeOp
+lteOp : Parser s RangeOp
 lteOp =
     Lte <$ string "<="
 
 
+rangeLowerBound : Parser s E
 rangeLowerBound =
     term <* rangeInf
 
 
+rangeUpperBound : Parser s E
 rangeUpperBound =
     term
 
 
-rangeInf : Parser String
+rangeInf : Parser s String
 rangeInf =
     ws <| string "TO"
 
 
-orOp : Parser (E -> E -> E)
+orOp : Parser s (E -> E -> E)
 orOp =
     EOr
         <$ (string "OR" <|> string "||")
         <?> "or"
 
 
-andOp : Parser (E -> E -> E)
+andOp : Parser s (E -> E -> E)
 andOp =
     EAnd
         <$ (string "AND" <|> string "&&")
         <?> "and"
 
 
-notOp : Parser (E -> E)
+notOp : Parser s (E -> E)
 notOp =
     ENot
         <$ (string "NOT" <|> string "!")
         <?> "not"
+        |> ws
 
 
-mustOp : Parser (E -> E)
+mustOp : Parser s (E -> E)
 mustOp =
     EMust
-        <$ (string "+")
+        <$ string "+"
         <?> "must"
 
 
-mustNotOp : Parser (E -> E)
+mustNotOp : Parser s (E -> E)
 mustNotOp =
     EMustNot
-        <$ (string "-")
+        <$ string "-"
         <?> "must not"
 
 
@@ -457,43 +475,51 @@ mustNotOp =
 
     (quick OR brown) AND fox
     status:(active OR pending) title:(full text search)^2
--}
-op : Parser (E -> E -> E)
-op =
-    rec <| \() ->
-        orOp <|> andOp
 
+-}
+op : Parser s (E -> E -> E)
+op =
+    lazy <|
+        \() ->
+            orOp <|> andOp
 
 
 {-| Fuzziness with default edit distance of 2
 
     quikc~ brwn~ foks~
     quikc~1
+
 -}
-fuzziness : Parser Fuzziness
+fuzziness : Parser s Fuzziness
 fuzziness =
-    maybe <| (string "~") *> (int <|> (succeed 2))
+    maybe <| string "~" *> (int <|> succeed 2)
 
 
 {-|
+
     "fox quick"~5
+
 -}
-proximity : Parser Proximity
+proximity : Parser s Proximity
 proximity =
-    maybe <| (string "~") *> (int <|> (succeed 2))
+    maybe <| string "~" *> (int <|> succeed 2)
 
 
 {-|
+
     quick^2 fox
     "john smith"^2   (foo bar)^4
+
 -}
-boost : Parser Boost
+boost : Parser s Boost
 boost =
-    maybe <| (string "^") *> (float <|> (toFloat <$> int))
+    maybe <| string "^" *> (float <|> (toFloat <$> int))
 
 
 {-|
+
     The reserved characters are: + - = && || > < ! ( ) { } [ ] ^ " ~ * ? : \ /
+
 -}
 reservedList : List String
 reservedList =
@@ -522,11 +548,11 @@ reservedList =
     ]
 
 
-reserved : List String -> Parser String
+reserved : List String -> Parser s String
 reserved xs =
-    regex <| "[" ++ (String.join "" (List.map Regex.escape xs)) ++ "]+"
+    regex <| "[" ++ String.join "" (List.map Regex.escape xs) ++ "]+"
 
 
-notReserved : List String -> Parser String
+notReserved : List String -> Parser s String
 notReserved xs =
-    regex <| "[^" ++ (String.join "" (List.map Regex.escape xs)) ++ "]+"
+    regex <| "[^" ++ String.join "" (List.map Regex.escape xs) ++ "]+"

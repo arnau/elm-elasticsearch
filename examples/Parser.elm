@@ -1,21 +1,14 @@
 module Parser exposing (..)
 
-import Dom
-import Html.App as App
+import Elasticsearch.QueryString.Parser as QS exposing (E(..), Range(..), RangeOp(..))
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onInput, onClick)
-import String
-import Task
-import Combine exposing (..)
-import Combine.Infix exposing (..)
-import Combine.Num exposing (int)
-import Elasticsearch.QueryString.Parser as QS exposing
-    (E(..), Range(..), RangeOp(..))
+import Html.Events exposing (onClick, onInput)
 
 
+main : Program Never Model Msg
 main =
-    App.program
+    Html.program
         { init = model ! []
         , view = view
         , update = update
@@ -25,6 +18,10 @@ main =
 
 
 -- MODEL
+
+
+type alias Color =
+    ( Int, Int, Int )
 
 
 type alias Model =
@@ -116,16 +113,19 @@ view model =
             ]
         ]
 
+
+asItem : String -> Html Msg
 asItem x =
     li
         [ style [ ( "padding", "1rem" ) ] ]
         [ div
             []
             [ code
-                [ style [ ( "background-color", "rgb(230, 230, 230)" )
-                        , ( "padding", "0.4rem" )
-                        , ( "display", "inline-block" )
-                        ]
+                [ style
+                    [ ( "background-color", "rgb(230, 230, 230)" )
+                    , ( "padding", "0.4rem" )
+                    , ( "display", "inline-block" )
+                    ]
                 ]
                 [ text x ]
             ]
@@ -133,6 +133,7 @@ asItem x =
         ]
 
 
+astView : String -> Html Msg
 astView content =
     case QS.parse content of
         Nothing ->
@@ -147,22 +148,12 @@ astView content =
                     div [] (List.map (expression 1) ast)
 
 
-
+item : Html Msg -> Html Msg
 item x =
     li [] [ x ]
 
 
-item' x xs =
-    if List.isEmpty xs then
-        item x
-    else
-        li
-            []
-            [ text (toString x)
-            , ul [] [ text (toString xs) ]
-            ]
-
-
+expression : Int -> E -> Html Msg
 expression depth e =
     case e of
         ETerm s f b ->
@@ -176,10 +167,10 @@ expression depth e =
                 ys =
                     List.map (expression (depth + 1)) xs
             in
-                group' depth ((text "(") :: ys ++ ((text ")") :: boostToView b))
+            group_ depth (text "(" :: ys ++ (text ")" :: boostToView b))
 
-        EPair (f, t) ->
-            group (200, 230, 255) [ expression 0 f, expression (depth + 1) t ]
+        EPair ( f, t ) ->
+            group ( 200, 230, 255 ) [ expression 0 f, expression (depth + 1) t ]
 
         EField s ->
             span [] [ text (s ++ ":") ]
@@ -188,170 +179,200 @@ expression depth e =
             regex s b
 
         EAnd a b ->
-            group'
+            group_
                 depth
-                ((expression (depth + 1) a) :: [ (op "AND"), (expression (depth + 1) b) ])
+                (expression (depth + 1) a :: [ op "AND", expression (depth + 1) b ])
 
         EOr a b ->
-            group
+            group_
                 depth
-                ((expression (depth + 1) a) :: [ (op "OR"), (expression (depth + 1) b) ])
+                (expression (depth + 1) a :: [ op "OR", expression (depth + 1) b ])
 
         ENot e ->
-            group'
+            group_
                 depth
-                ((op "NOT") :: [ expression (depth + 1) e ])
+                (op "NOT" :: [ expression (depth + 1) e ])
 
         EMust e ->
-            group'
+            group_
                 depth
-                ((op "+") :: [ expression (depth + 1) e ])
+                (op "+" :: [ expression (depth + 1) e ])
 
         EMustNot e ->
-            group'
+            group_
                 depth
-                ((op "-") :: [ expression (depth + 1) e ])
+                (op "-" :: [ expression (depth + 1) e ])
 
         ERange range ->
             let
-                rng (l, u) a b =
-                    group'
+                rng ( l, u ) a b =
+                    group_
                         depth
-                        (
-                            (text l)
-                            :: [ (expression (depth + 1) a) ]
-                            ++ [ (op "TO"), (expression (depth + 1) b), (text u)]
+                        (text l
+                            :: [ expression (depth + 1) a ]
+                            ++ [ op "TO", expression (depth + 1) b, text u ]
                         )
-
             in
-                case range of
-                    Inclusive a b ->
-                        rng ("[", "]") a b
+            case range of
+                Inclusive a b ->
+                    rng ( "[", "]" ) a b
 
-                    Exclusive a b ->
-                        rng ("{", "}") a b
+                Exclusive a b ->
+                    rng ( "{", "}" ) a b
 
-                    LInclusive a b ->
-                        rng ("[", "}") a b
+                LInclusive a b ->
+                    rng ( "[", "}" ) a b
 
-                    RInclusive a b ->
-                        rng ("{", "]") a b
+                RInclusive a b ->
+                    rng ( "{", "]" ) a b
 
-                    SideUnbounded rop a ->
-                        let
-                            op' =
-                                case rop of
-                                    Gt ->
-                                        ">"
+                SideUnbounded rop a ->
+                    let
+                        op_ =
+                            case rop of
+                                Gt ->
+                                    ">"
 
-                                    Gte ->
-                                        ">="
+                                Gte ->
+                                    ">="
 
-                                    Lt ->
-                                        "<"
+                                Lt ->
+                                    "<"
 
-                                    Lte ->
-                                        "<="
-                        in
-                            group'
-                                depth
-                                [ (op op'), (expression (depth + 1) a) ]
-
-        -- _ ->
-        --     token (255, 200, 150) (toString e)
+                                Lte ->
+                                    "<="
+                    in
+                    group_
+                        depth
+                        [ op op_, expression (depth + 1) a ]
 
 
+
+-- _ ->
+--     token (255, 200, 150) (toString e)
+
+
+term : String -> QS.Fuzziness -> QS.Boost -> Html Msg
 term s f b =
     wrapper
-        (120, 180, 255)
-        ((token (150, 200, 255) s)
-            :: (fuzzinessToView f) ++ (boostToView b))
+        ( 120, 180, 255 )
+        (token ( 150, 200, 255 ) s
+            :: fuzzinessToView f
+            ++ boostToView b
+        )
 
 
+fuzzinessToView : QS.Fuzziness -> List (Html Msg)
 fuzzinessToView x =
     Maybe.withDefault emptyText (Maybe.map fuzzinessView x)
 
 
+fuzzinessView : a -> List (Html Msg)
 fuzzinessView x =
-    [ (op "~"), text (toString x) ]
+    [ op "~", text (toString x) ]
 
 
+boostToView : QS.Boost -> List (Html Msg)
 boostToView x =
     Maybe.withDefault emptyText (Maybe.map boostView x)
 
 
+boostView : a -> List (Html Msg)
 boostView x =
-    [ (op "^"), text (toString x) ]
+    [ op "^", text (toString x) ]
 
+
+phrase : String -> QS.Proximity -> QS.Boost -> Html Msg
 phrase s p b =
     wrapper
-        (150, 220, 100)
-        ((token (175, 250, 150) ("\"" ++ s ++ "\""))
-            :: (proximityToView p) ++ (boostToView b))
+        ( 150, 220, 100 )
+        (token ( 175, 250, 150 ) ("\"" ++ s ++ "\"")
+            :: proximityToView p
+            ++ boostToView b
+        )
 
+
+regex : String -> QS.Boost -> Html Msg
 regex s b =
     wrapper
-        (255, 220, 120)
-        ((token (255, 250, 150) ("/" ++ s ++ "/"))
-            :: (boostToView b))
+        ( 255, 220, 120 )
+        (token ( 255, 250, 150 ) ("/" ++ s ++ "/")
+            :: boostToView b
+        )
 
 
+proximityToView : QS.Proximity -> List (Html Msg)
 proximityToView x =
     Maybe.withDefault emptyText (Maybe.map proximityView x)
 
 
+proximityView : a -> List (Html Msg)
 proximityView x =
-    [ (op "~"), text (toString x) ]
+    [ op "~", text (toString x) ]
 
 
+emptyText : List (Html Msg)
 emptyText =
-    [ (text "") ]
+    [ text "" ]
 
 
+token : Color -> String -> Html Msg
 token color s =
     span
-        [ style [ ( "background-color", "rgb" ++ toString color )
-                , ( "display", "inline-block" )
-                , ( "padding", "2px" )
-                , ( "margin", "2px" )
-                ] ]
+        [ style
+            [ ( "background-color", "rgb" ++ toString color )
+            , ( "display", "inline-block" )
+            , ( "padding", "2px" )
+            , ( "margin", "2px" )
+            ]
+        ]
         [ text s ]
 
 
+group : Color -> List (Html Msg) -> Html Msg
 group color xs =
     span
-        [ style [ ( "background-color", "rgb" ++ toString color )
-                , ( "display", "inline-block" )
-                , ( "padding", "4px" )
-                , ( "margin", "2px" )
-                ] ]
+        [ style
+            [ ( "background-color", "rgb" ++ toString color )
+            , ( "display", "inline-block" )
+            , ( "padding", "4px" )
+            , ( "margin", "2px" )
+            ]
+        ]
         xs
 
-group' depth xs =
+
+group_ : Int -> List (Html Msg) -> Html Msg
+group_ depth xs =
     let
         color =
             255 - (depth * 10)
     in
-        group (color, color, color) xs
+    group ( color, color, color ) xs
 
+
+op : String -> Html Msg
 op s =
     span
-        [ style [ ( "background-color", "rgb(250, 185, 210)" )
-                , ( "display", "inline-block" )
-                , ( "padding", "2px" )
-                , ( "margin", "2px" )
-                , ( "border-radius", "3px" )
-                , ( "font-size", "0.8rem" )
-                ] ]
+        [ style
+            [ ( "background-color", "rgb(250, 185, 210)" )
+            , ( "display", "inline-block" )
+            , ( "padding", "2px" )
+            , ( "margin", "2px" )
+            , ( "border-radius", "3px" )
+            , ( "font-size", "0.8rem" )
+            ]
+        ]
         [ text s ]
 
 
+wrapper : Color -> List (Html Msg) -> Html Msg
 wrapper color xs =
     span
-        [ style [ ( "background-color", "rgb" ++ toString color )
-                , ( "display", "inline-block" )
-                , ( "margin", "2px" )
-                ] ]
+        [ style
+            [ ( "background-color", "rgb" ++ toString color )
+            , ( "display", "inline-block" )
+            , ( "margin", "2px" )
+            ]
+        ]
         xs
-
-
